@@ -1094,3 +1094,17 @@ endif
 endif
 	@echo  '  $(MAKE) [targets]      (quiet build, default)'
 	@echo  '  $(MAKE) V=1 [targets]  (verbose build)'
+
+# Creates GTK-Doc documentation for object.h
+.PHONY: gtkdoc
+DOC_MODULE=qemu
+gtkdoc:
+	gtkdoc-scan --module=$(DOC_MODULE) ./include/qom/object.h
+	gtkdoc-mkdb --module=$(DOC_MODULE) --output-format=xml --source-dir=./include/qom/
+ifneq ($(wildcard $(SRC_PATH)/html),)
+	@echo "Directory html already exists"
+else
+	mkdir html
+endif
+	cd html && gtkdoc-mkhtml $(DOC_MODULE) ../qemu-docs.xml
+	gtkdoc-fixxref --module=$(DOC_MODULE) --module-dir=html
