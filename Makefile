@@ -1095,16 +1095,31 @@ endif
 	@echo  '  $(MAKE) [targets]      (quiet build, default)'
 	@echo  '  $(MAKE) V=1 [targets]  (verbose build)'
 
-# Creates GTK-Doc documentation for object.h
+# Creates GTK-Doc documentation for ./include/qom/
 .PHONY: gtkdoc
 DOC_MODULE=qemu
 gtkdoc:
-	gtkdoc-scan --module=$(DOC_MODULE) ./include/qom/object.h
+	gtkdoc-scan --module=$(DOC_MODULE) ./include/qom/*
 	gtkdoc-mkdb --module=$(DOC_MODULE) --output-format=xml --source-dir=./include/qom/
-ifneq ($(wildcard $(SRC_PATH)/html),)
+ifneq ($(wildcard $(SRC_PATH)/html/include-qom),)
 	@echo "Directory html already exists"
 else
-	mkdir html
+	mkdir html/include-qom
 endif
-	cd html && gtkdoc-mkhtml $(DOC_MODULE) ../qemu-docs.xml
+	cd html/include-qom && gtkdoc-mkhtml $(DOC_MODULE) ../../qemu-docs.xml
 	gtkdoc-fixxref --module=$(DOC_MODULE) --module-dir=html
+
+# Creates GTK-Doc documentation for ./include/qemu/
+.PHONY: gtkdocqemu
+DOC_MODULE=qemutest
+gtkdocqemu:
+	gtkdoc-scan --module=$(DOC_MODULE) ./include/qemu/*
+	gtkdoc-mkdb --module=$(DOC_MODULE) --output-format=xml --source-dir=./include/qemu/
+ifneq ($(wildcard $(SRC_PATH)/html/include-qemu),)
+	@echo "Directory html already exists"
+else
+	mkdir html/include-qemu
+endif
+	cd html/include-qemu && gtkdoc-mkhtml $(DOC_MODULE) ../../qemutest-docs.xml
+	gtkdoc-fixxref --module=$(DOC_MODULE) --module-dir=html
+
