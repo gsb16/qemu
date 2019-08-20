@@ -18,13 +18,17 @@
  * Contributions after 2012-01-13 are licensed under the terms of the
  * GNU GPL, version 2 or (at your option) any later version.
  */
+
 #include "qemu/osdep.h"
-#include "hw/hw.h"
 #include "hw/i386/pc.h"
+#include "hw/irq.h"
 #include "hw/isa/apm.h"
 #include "hw/i2c/pm_smbus.h"
 #include "hw/pci/pci.h"
+#include "hw/qdev-properties.h"
 #include "hw/acpi/acpi.h"
+#include "sysemu/reset.h"
+#include "sysemu/runstate.h"
 #include "sysemu/sysemu.h"
 #include "qapi/error.h"
 #include "qemu/range.h"
@@ -38,15 +42,10 @@
 #include "hw/acpi/memory_hotplug.h"
 #include "hw/acpi/acpi_dev_interface.h"
 #include "hw/xen/xen.h"
+#include "migration/qemu-file-types.h"
+#include "migration/vmstate.h"
 #include "qom/cpu.h"
-
-//#define DEBUG
-
-#ifdef DEBUG
-# define PIIX4_DPRINTF(format, ...)     printf(format, ## __VA_ARGS__)
-#else
-# define PIIX4_DPRINTF(format, ...)     do { } while (0)
-#endif
+#include "trace.h"
 
 #define GPE_BASE 0xafe0
 #define GPE_LEN 4
@@ -91,8 +90,6 @@ typedef struct PIIX4PMState {
 
     MemHotplugState acpi_memory_hotplug;
 } PIIX4PMState;
-
-#define TYPE_PIIX4_PM "PIIX4_PM"
 
 #define PIIX4_PM(obj) \
     OBJECT_CHECK(PIIX4PMState, (obj), TYPE_PIIX4_PM)
@@ -554,17 +551,6 @@ static void piix4_pm_realize(PCIDevice *dev, Error **errp)
     piix4_pm_add_propeties(s);
 }
 
-Object *piix4_pm_find(void)
-{
-    bool ambig;
-    Object *o = object_resolve_path_type("", TYPE_PIIX4_PM, &ambig);
-
-    if (ambig || !o) {
-        return NULL;
-    }
-    return o;
-}
-
 I2CBus *piix4_pm_init(PCIBus *bus, int devfn, uint32_t smb_io_base,
                       qemu_irq sci_irq, qemu_irq smi_irq,
                       int smm_enabled, DeviceState **piix4_pm)
@@ -596,7 +582,7 @@ static uint64_t gpe_readb(void *opaque, hwaddr addr, unsigned width)
     PIIX4PMState *s = opaque;
     uint32_t val = acpi_gpe_ioport_readb(&s->ar, addr);
 
-    PIIX4_DPRINTF("gpe read %" HWADDR_PRIx " == %" PRIu32 "\n", addr, val);
+    trace_piix4_gpe_readb(addr, width, val);
     return val;
 }
 
@@ -605,10 +591,9 @@ static void gpe_writeb(void *opaque, hwaddr addr, uint64_t val,
 {
     PIIX4PMState *s = opaque;
 
+    trace_piix4_gpe_writeb(addr, width, val);
     acpi_gpe_ioport_writeb(&s->ar, addr, val);
     acpi_update_sci(&s->ar, s->irq);
-
-    PIIX4_DPRINTF("gpe write %" HWADDR_PRIx " <== %" PRIu64 "\n", addr, val);
 }
 
 static const MemoryRegionOps piix4_gpe_ops = {

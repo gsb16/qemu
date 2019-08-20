@@ -1,9 +1,9 @@
 #ifndef QEMU_HW_SCSI_H
 #define QEMU_HW_SCSI_H
 
-#include "hw/qdev.h"
+#include "block/aio.h"
 #include "hw/block/block.h"
-#include "sysemu/sysemu.h"
+#include "hw/qdev-core.h"
 #include "scsi/utils.h"
 #include "qemu/notify.h"
 
@@ -88,6 +88,7 @@ struct SCSIDevice
     int scsi_version;
     int default_scsi_version;
     bool needs_vpd_bl_emulation;
+    bool hba_supports_iothread;
 };
 
 extern const VMStateDescription vmstate_scsi_device;

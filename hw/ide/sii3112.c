@@ -14,6 +14,8 @@
 
 #include "qemu/osdep.h"
 #include "hw/ide/pci.h"
+#include "qemu/module.h"
+#include "sysemu/reset.h"
 #include "trace.h"
 
 #define TYPE_SII3112_PCI "sii3112"

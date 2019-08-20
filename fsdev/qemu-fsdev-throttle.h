@@ -12,11 +12,10 @@
  *
  */
 
-#ifndef _FSDEV_THROTTLE_H
-#define _FSDEV_THROTTLE_H
+#ifndef QEMU_FSDEV_THROTTLE_H
+#define QEMU_FSDEV_THROTTLE_H
 
 #include "block/aio.h"
-#include "qemu/main-loop.h"
 #include "qemu/coroutine.h"
 #include "qemu/throttle.h"
 
@@ -35,4 +34,5 @@ void coroutine_fn fsdev_co_throttle_request(FsThrottle *, bool ,
                                             struct iovec *, int);
 
 void fsdev_throttle_cleanup(FsThrottle *);
-#endif /* _FSDEV_THROTTLE_H */
+
+#endif /* QEMU_FSDEV_THROTTLE_H */

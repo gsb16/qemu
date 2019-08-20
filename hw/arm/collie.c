@@ -10,11 +10,10 @@
  */
 #include "qemu/osdep.h"
 #include "qemu/units.h"
-#include "hw/hw.h"
 #include "hw/sysbus.h"
 #include "hw/boards.h"
 #include "strongarm.h"
-#include "hw/arm/arm.h"
+#include "hw/arm/boot.h"
 #include "hw/block/flash.h"
 #include "exec/address-spaces.h"
 #include "cpu.h"

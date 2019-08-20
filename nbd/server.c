@@ -19,17 +19,21 @@
 
 #include "qemu/osdep.h"
 #include "qapi/error.h"
+#include "qemu/queue.h"
 #include "trace.h"
 #include "nbd-internal.h"
+#include "qemu/units.h"
 
 #define NBD_META_ID_BASE_ALLOCATION 0
 #define NBD_META_ID_DIRTY_BITMAP 1
 
-/* NBD_MAX_BITMAP_EXTENTS: 1 mb of extents data. An empirical
+/*
+ * NBD_MAX_BLOCK_STATUS_EXTENTS: 1 MiB of extents data. An empirical
  * constant. If an increase is needed, note that the NBD protocol
  * recommends no larger than 32 mb, so that the client won't consider
- * the reply as a denial of service attack. */
-#define NBD_MAX_BITMAP_EXTENTS (0x100000 / 8)
+ * the reply as a denial of service attack.
+ */
+#define NBD_MAX_BLOCK_STATUS_EXTENTS (1 * MiB / 8)
 
 static int system_errno_to_nbd_errno(int err)
 {
@@ -1484,13 +1488,15 @@ NBDExport *nbd_export_new(BlockDriverState *bs, uint64_t dev_offset,
     if ((nbdflags & NBD_FLAG_READ_ONLY) == 0) {
         perm |= BLK_PERM_WRITE;
     }
-    blk = blk_new(perm, BLK_PERM_CONSISTENT_READ | BLK_PERM_WRITE_UNCHANGED |
-                        BLK_PERM_WRITE | BLK_PERM_GRAPH_MOD);
+    blk = blk_new(bdrv_get_aio_context(bs), perm,
+                  BLK_PERM_CONSISTENT_READ | BLK_PERM_WRITE_UNCHANGED |
+                  BLK_PERM_WRITE | BLK_PERM_GRAPH_MOD);
     ret = blk_insert_bs(blk, bs, errp);
     if (ret < 0) {
         goto fail;
     }
     blk_set_enable_write_cache(blk, !writethrough);
+    blk_set_allow_aio_context_change(blk, true);
 
     exp->refcount = 1;
     QTAILQ_INIT(&exp->clients);
@@ -1958,7 +1964,7 @@ static int nbd_co_send_block_status(NBDClient *client, uint64_t handle,
                                     Error **errp)
 {
     int ret;
-    unsigned int nb_extents = dont_fragment ? 1 : NBD_MAX_BITMAP_EXTENTS;
+    unsigned int nb_extents = dont_fragment ? 1 : NBD_MAX_BLOCK_STATUS_EXTENTS;
     NBDExtent *extents = g_new(NBDExtent, nb_extents);
     uint64_t final_length = length;
 
@@ -1998,7 +2004,7 @@ static unsigned int bitmap_to_extents(BdrvDirtyBitmap *bitmap, uint64_t offset,
     bdrv_dirty_bitmap_lock(bitmap);
 
     it = bdrv_dirty_iter_new(bitmap);
-    dirty = bdrv_get_dirty_locked(NULL, bitmap, offset);
+    dirty = bdrv_dirty_bitmap_get_locked(bitmap, offset);
 
     assert(begin < overall_end && nb_extents);
     while (begin < overall_end && i < nb_extents) {
@@ -2043,7 +2049,7 @@ static int nbd_co_send_bitmap(NBDClient *client, uint64_t handle,
                               uint32_t context_id, Error **errp)
 {
     int ret;
-    unsigned int nb_extents = dont_fragment ? 1 : NBD_MAX_BITMAP_EXTENTS;
+    unsigned int nb_extents = dont_fragment ? 1 : NBD_MAX_BLOCK_STATUS_EXTENTS;
     NBDExtent *extents = g_new(NBDExtent, nb_extents);
     uint64_t final_length = length;
 
@@ -2099,12 +2105,15 @@ static int nbd_co_receive_request(NBDRequestData *req, NBDRequest *request,
             return -EINVAL;
         }
 
-        req->data = blk_try_blockalign(client->exp->blk, request->len);
-        if (req->data == NULL) {
-            error_setg(errp, "No memory");
-            return -ENOMEM;
+        if (request->type != NBD_CMD_CACHE) {
+            req->data = blk_try_blockalign(client->exp->blk, request->len);
+            if (req->data == NULL) {
+                error_setg(errp, "No memory");
+                return -ENOMEM;
+            }
         }
     }
+
     if (request->type == NBD_CMD_WRITE) {
         if (nbd_read(client->ioc, req->data, request->len, "CMD_WRITE data",
                      errp) < 0)
@@ -2189,7 +2198,7 @@ static coroutine_fn int nbd_do_cmd_read(NBDClient *client, NBDRequest *request,
     int ret;
     NBDExport *exp = client->exp;
 
-    assert(request->type == NBD_CMD_READ || request->type == NBD_CMD_CACHE);
+    assert(request->type == NBD_CMD_READ);
 
     /* XXX: NBD Protocol only documents use of FUA with WRITE */
     if (request->flags & NBD_CMD_FLAG_FUA) {
@@ -2201,7 +2210,7 @@ static coroutine_fn int nbd_do_cmd_read(NBDClient *client, NBDRequest *request,
     }
 
     if (client->structured_reply && !(request->flags & NBD_CMD_FLAG_DF) &&
-        request->len && request->type != NBD_CMD_CACHE)
+        request->len)
     {
         return nbd_co_send_sparse_read(client, request->handle, request->from,
                                        data, request->len, errp);
@@ -2209,7 +2218,7 @@ static coroutine_fn int nbd_do_cmd_read(NBDClient *client, NBDRequest *request,
 
     ret = blk_pread(exp->blk, request->from + exp->dev_offset, data,
                     request->len);
-    if (ret < 0 || request->type == NBD_CMD_CACHE) {
+    if (ret < 0) {
         return nbd_send_generic_reply(client, request->handle, ret,
                                       "reading from file failed", errp);
     }
@@ -2228,6 +2237,28 @@ static coroutine_fn int nbd_do_cmd_read(NBDClient *client, NBDRequest *request,
     }
 }
 
+/*
+ * nbd_do_cmd_cache
+ *
+ * Handle NBD_CMD_CACHE request.
+ * Return -errno if sending fails. Other errors are reported directly to the
+ * client as an error reply.
+ */
+static coroutine_fn int nbd_do_cmd_cache(NBDClient *client, NBDRequest *request,
+                                         Error **errp)
+{
+    int ret;
+    NBDExport *exp = client->exp;
+
+    assert(request->type == NBD_CMD_CACHE);
+
+    ret = blk_co_preadv(exp->blk, request->from + exp->dev_offset, request->len,
+                        NULL, BDRV_REQ_COPY_ON_READ | BDRV_REQ_PREFETCH);
+
+    return nbd_send_generic_reply(client, request->handle, ret,
+                                  "caching data failed", errp);
+}
+
 /* Handle NBD request.
  * Return -errno if sending fails. Other errors are reported directly to the
  * client as an error reply. */
@@ -2241,8 +2272,10 @@ static coroutine_fn int nbd_handle_request(NBDClient *client,
     char *msg;
 
     switch (request->type) {
-    case NBD_CMD_READ:
     case NBD_CMD_CACHE:
+        return nbd_do_cmd_cache(client, request, errp);
+
+    case NBD_CMD_READ:
         return nbd_do_cmd_read(client, request, data, errp);
 
     case NBD_CMD_WRITE:

@@ -138,9 +138,9 @@ static bool qvirtio_pci_get_queue_isr_status(QVirtioDevice *d, QVirtQueue *vq)
             /* No ISR checking should be done if masked, but read anyway */
             return qpci_msix_pending(dev->pdev, vqpci->msix_entry);
         } else {
-            data = readl(vqpci->msix_addr);
+            data = qtest_readl(dev->pdev->bus->qts, vqpci->msix_addr);
             if (data == vqpci->msix_data) {
-                writel(vqpci->msix_addr, 0);
+                qtest_writel(dev->pdev->bus->qts, vqpci->msix_addr, 0);
                 return true;
             } else {
                 return false;
@@ -162,9 +162,9 @@ static bool qvirtio_pci_get_config_isr_status(QVirtioDevice *d)
             /* No ISR checking should be done if masked, but read anyway */
             return qpci_msix_pending(dev->pdev, dev->config_msix_entry);
         } else {
-            data = readl(dev->config_msix_addr);
+            data = qtest_readl(dev->pdev->bus->qts, dev->config_msix_addr);
             if (data == dev->config_msix_data) {
-                writel(dev->config_msix_addr, 0);
+                qtest_writel(dev->pdev->bus->qts, dev->config_msix_addr, 0);
                 return true;
             } else {
                 return false;
@@ -199,6 +199,7 @@ static QVirtQueue *qvirtio_pci_virtqueue_setup(QVirtioDevice *d,
     uint32_t feat;
     uint64_t addr;
     QVirtQueuePCI *vqpci;
+    QVirtioPCIDevice *qvpcidev = container_of(d, QVirtioPCIDevice, vdev);
 
     vqpci = g_malloc0(sizeof(*vqpci));
     feat = qvirtio_pci_get_guest_features(d);
@@ -224,7 +225,7 @@ static QVirtQueue *qvirtio_pci_virtqueue_setup(QVirtioDevice *d,
 
     addr = guest_alloc(alloc, qvring_size(vqpci->vq.size,
                                           VIRTIO_PCI_VRING_ALIGN));
-    qvring_init(alloc, &vqpci->vq, addr);
+    qvring_init(qvpcidev->pdev->bus->qts, alloc, &vqpci->vq, addr);
     qvirtio_pci_set_queue_address(d, vqpci->vq.desc / VIRTIO_PCI_VRING_ALIGN);
 
     return &vqpci->vq;

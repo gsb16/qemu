@@ -8,9 +8,7 @@
 #ifndef PTIMER_H
 #define PTIMER_H
 
-#include "qemu-common.h"
 #include "qemu/timer.h"
-#include "migration/vmstate.h"
 
 /* The ptimer API implements a simple periodic countdown timer.
  * The countdown timer has a value (which can be read and written via

@@ -22,11 +22,13 @@
  */
 
 #include "qemu/osdep.h"
-#include "hw/hw.h"
+#include "hw/irq.h"
 #include "hw/sysbus.h"
+#include "migration/vmstate.h"
 #include "trace.h"
 #include "audio/audio.h"
 #include "qemu/error-report.h"
+#include "qemu/module.h"
 
 enum {
     R_AC97_CTRL = 0,

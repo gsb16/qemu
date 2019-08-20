@@ -30,9 +30,11 @@
 #include "hw/sysbus.h"
 #include "hw/ptimer.h"
 #include "qemu/main-loop.h"
+#include "qemu/module.h"
 #include "qemu/log.h"
 
 #include "hw/timer/digic-timer.h"
+#include "migration/vmstate.h"
 
 static const VMStateDescription vmstate_digic_timer = {
     .name = "digic.timer",

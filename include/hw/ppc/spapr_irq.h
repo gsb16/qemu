@@ -10,6 +10,8 @@
 #ifndef HW_SPAPR_IRQ_H
 #define HW_SPAPR_IRQ_H
 
+#include "target/ppc/cpu-qom.h"
+
 /*
  * IRQ range offsets per device type
  */
@@ -48,6 +50,7 @@ typedef struct SpaprIrq {
     void (*reset)(SpaprMachineState *spapr, Error **errp);
     void (*set_irq)(void *opaque, int srcno, int val);
     const char *(*get_nodename)(SpaprMachineState *spapr);
+    void (*init_kvm)(SpaprMachineState *spapr, Error **errp);
 } SpaprIrq;
 
 extern SpaprIrq spapr_irq_xics;

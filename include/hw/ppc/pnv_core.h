@@ -16,10 +16,12 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef _PPC_PNV_CORE_H
-#define _PPC_PNV_CORE_H
+
+#ifndef PPC_PNV_CORE_H
+#define PPC_PNV_CORE_H
 
 #include "hw/cpu/core.h"
+#include "target/ppc/cpu.h"
 
 #define TYPE_PNV_CORE "powernv-cpu-core"
 #define PNV_CORE(obj) \
@@ -68,4 +70,4 @@ typedef struct PnvQuad {
     uint32_t id;
     MemoryRegion xscom_regs;
 } PnvQuad;
-#endif /* _PPC_PNV_CORE_H */
+#endif /* PPC_PNV_CORE_H */

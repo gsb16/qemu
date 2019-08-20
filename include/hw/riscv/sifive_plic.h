@@ -21,7 +21,7 @@
 #ifndef HW_SIFIVE_PLIC_H
 #define HW_SIFIVE_PLIC_H
 
-#include "hw/irq.h"
+#include "hw/sysbus.h"
 
 #define TYPE_SIFIVE_PLIC "riscv.sifive.plic"
 
@@ -80,4 +80,3 @@ DeviceState *sifive_plic_create(hwaddr addr, char *hart_config,
     uint32_t aperture_size);
 
 #endif
-

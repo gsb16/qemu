@@ -1,9 +1,7 @@
 #ifndef OPENPIC_H
 #define OPENPIC_H
 
-#include "qemu-common.h"
 #include "hw/sysbus.h"
-#include "hw/qdev-core.h"
 #include "qom/cpu.h"
 
 #define MAX_CPU     32

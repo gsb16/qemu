@@ -18,6 +18,7 @@
 
 #include "qemu/osdep.h"
 #include "libqtest.h"
+#include "qemu/module.h"
 #include "libqos/qgraph.h"
 #include "libqos/virtio-net.h"
 #include "hw/virtio/virtio-net.h"
@@ -52,6 +53,7 @@ static void virtio_net_setup(QVirtioNet *interface)
     } else {
         interface->n_queues = 2;
     }
+    interface->n_queues++; /* Account for the ctrl queue */
 
     interface->queues = g_new(QVirtQueue *, interface->n_queues);
     for (i = 0; i < interface->n_queues; i++) {

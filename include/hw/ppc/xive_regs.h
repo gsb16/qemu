@@ -16,6 +16,9 @@
 #ifndef PPC_XIVE_REGS_H
 #define PPC_XIVE_REGS_H
 
+#include "qemu/bswap.h"
+#include "qemu/host-utils.h"
+
 /*
  * Interrupt source number encoding on PowerBUS
  */
@@ -207,6 +210,12 @@ typedef struct XiveEND {
 #define xive_end_is_notify(end)   (be32_to_cpu((end)->w0) & END_W0_UCOND_NOTIFY)
 #define xive_end_is_backlog(end)  (be32_to_cpu((end)->w0) & END_W0_BACKLOG)
 #define xive_end_is_escalate(end) (be32_to_cpu((end)->w0) & END_W0_ESCALATE_CTL)
+
+static inline uint64_t xive_end_qaddr(XiveEND *end)
+{
+    return ((uint64_t) be32_to_cpu(end->w2) & 0x0fffffff) << 32 |
+        be32_to_cpu(end->w3);
+}
 
 /* Notification Virtual Target (NVT) */
 typedef struct XiveNVT {

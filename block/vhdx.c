@@ -1175,7 +1175,7 @@ static int vhdx_allocate_block(BlockDriverState *bs, BDRVVHDXState *s,
     *new_offset = current_len;
 
     /* per the spec, the address for a block is in units of 1MB */
-    *new_offset = ROUND_UP(*new_offset, 1024 * 1024);
+    *new_offset = ROUND_UP(*new_offset, 1 * MiB);
     if (*new_offset > INT64_MAX) {
         return -EINVAL;
     }
@@ -1282,7 +1282,7 @@ static coroutine_fn int vhdx_co_writev(BlockDriverState *bs, int64_t sector_num,
                 /* Queue another write of zero buffers if the underlying file
                  * does not zero-fill on file extension */
 
-                if (bdrv_has_zero_init(bs->file->bs) == 0) {
+                if (bdrv_has_zero_init_truncate(bs->file->bs) == 0) {
                     use_zero_buffers = true;
 
                     /* zero fill the front, if any */
@@ -1338,7 +1338,7 @@ static coroutine_fn int vhdx_co_writev(BlockDriverState *bs, int64_t sector_num,
             case PAYLOAD_BLOCK_FULLY_PRESENT:
                 /* if the file offset address is in the header zone,
                  * there is a problem */
-                if (sinfo.file_offset < (1024 * 1024)) {
+                if (sinfo.file_offset < (1 * MiB)) {
                     ret = -EFAULT;
                     goto error_bat_restore;
                 }
@@ -1889,7 +1889,8 @@ static int coroutine_fn vhdx_co_create(BlockdevCreateOptions *opts,
         return -EINVAL;
     }
     if (block_size > VHDX_BLOCK_SIZE_MAX) {
-        error_setg(errp, "Block size must not exceed %d", VHDX_BLOCK_SIZE_MAX);
+        error_setg(errp, "Block size must not exceed %" PRId64,
+                   VHDX_BLOCK_SIZE_MAX);
         return -EINVAL;
     }
 
@@ -1899,7 +1900,8 @@ static int coroutine_fn vhdx_co_create(BlockdevCreateOptions *opts,
         return -EIO;
     }
 
-    blk = blk_new(BLK_PERM_WRITE | BLK_PERM_RESIZE, BLK_PERM_ALL);
+    blk = blk_new(bdrv_get_aio_context(bs),
+                  BLK_PERM_WRITE | BLK_PERM_RESIZE, BLK_PERM_ALL);
     ret = blk_insert_bs(blk, bs, errp);
     if (ret < 0) {
         goto delete_and_exit;
@@ -2073,6 +2075,30 @@ static int coroutine_fn vhdx_co_check(BlockDriverState *bs,
     return 0;
 }
 
+static int vhdx_has_zero_init(BlockDriverState *bs)
+{
+    BDRVVHDXState *s = bs->opaque;
+    int state;
+
+    /*
+     * Check the subformat: Fixed images have all BAT entries present,
+     * dynamic images have none (right after creation).  It is
+     * therefore enough to check the first BAT entry.
+     */
+    if (!s->bat_entries) {
+        return 1;
+    }
+
+    state = s->bat[0] & VHDX_BAT_STATE_BIT_MASK;
+    if (state == PAYLOAD_BLOCK_FULLY_PRESENT) {
+        /* Fixed subformat */
+        return bdrv_has_zero_init(bs->file->bs);
+    }
+
+    /* Dynamic subformat */
+    return 1;
+}
+
 static QemuOptsList vhdx_create_opts = {
     .name = "vhdx-create-opts",
     .head = QTAILQ_HEAD_INITIALIZER(vhdx_create_opts.head),
@@ -2126,7 +2152,7 @@ static BlockDriver bdrv_vhdx = {
     .bdrv_co_create_opts    = vhdx_co_create_opts,
     .bdrv_get_info          = vhdx_get_info,
     .bdrv_co_check          = vhdx_co_check,
-    .bdrv_has_zero_init     = bdrv_has_zero_init_1,
+    .bdrv_has_zero_init     = vhdx_has_zero_init,
 
     .create_opts            = &vhdx_create_opts,
 };

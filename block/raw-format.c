@@ -29,6 +29,7 @@
 #include "qemu/osdep.h"
 #include "block/block_int.h"
 #include "qapi/error.h"
+#include "qemu/module.h"
 #include "qemu/option.h"
 
 typedef struct BDRVRawState {
@@ -412,6 +413,11 @@ static int raw_has_zero_init(BlockDriverState *bs)
     return bdrv_has_zero_init(bs->file->bs);
 }
 
+static int raw_has_zero_init_truncate(BlockDriverState *bs)
+{
+    return bdrv_has_zero_init_truncate(bs->file->bs);
+}
+
 static int coroutine_fn raw_co_create_opts(const char *filename, QemuOpts *opts,
                                            Error **errp)
 {
@@ -571,6 +577,7 @@ BlockDriver bdrv_raw = {
     .bdrv_co_ioctl        = &raw_co_ioctl,
     .create_opts          = &raw_create_opts,
     .bdrv_has_zero_init   = &raw_has_zero_init,
+    .bdrv_has_zero_init_truncate = &raw_has_zero_init_truncate,
     .strong_runtime_opts  = raw_strong_runtime_opts,
     .mutable_opts         = mutable_opts,
 };

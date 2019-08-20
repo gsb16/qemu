@@ -20,6 +20,8 @@
 #ifndef MEMORY_INTERNAL_H
 #define MEMORY_INTERNAL_H
 
+#include "cpu.h"
+
 #ifndef CONFIG_USER_ONLY
 static inline AddressSpaceDispatch *flatview_to_dispatch(FlatView *fv)
 {
@@ -45,8 +47,7 @@ AddressSpaceDispatch *address_space_dispatch_new(FlatView *fv);
 void address_space_dispatch_compact(AddressSpaceDispatch *d);
 void address_space_dispatch_free(AddressSpaceDispatch *d);
 
-void mtree_print_dispatch(fprintf_function mon, void *f,
-                          struct AddressSpaceDispatch *d,
+void mtree_print_dispatch(struct AddressSpaceDispatch *d,
                           MemoryRegion *root);
 
 struct page_collection;

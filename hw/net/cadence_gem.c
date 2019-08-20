@@ -25,9 +25,13 @@
 #include "qemu/osdep.h"
 #include <zlib.h> /* For crc32 */
 
+#include "hw/irq.h"
 #include "hw/net/cadence_gem.h"
+#include "hw/qdev-properties.h"
+#include "migration/vmstate.h"
 #include "qapi/error.h"
 #include "qemu/log.h"
+#include "qemu/module.h"
 #include "sysemu/dma.h"
 #include "net/checksum.h"
 

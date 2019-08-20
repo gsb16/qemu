@@ -4,7 +4,6 @@
 #include "qemu/queue.h"
 #include "qemu/bitmap.h"
 #include "qom/object.h"
-#include "hw/irq.h"
 #include "hw/hotplug.h"
 
 enum {
@@ -34,8 +33,6 @@ typedef void (*DeviceUnrealize)(DeviceState *dev, Error **errp);
 typedef void (*DeviceReset)(DeviceState *dev);
 typedef void (*BusRealize)(BusState *bus, Error **errp);
 typedef void (*BusUnrealize)(BusState *bus, Error **errp);
-
-struct VMStateDescription;
 
 /**
  * DeviceClass:
@@ -112,7 +109,7 @@ typedef struct DeviceClass {
     DeviceUnrealize unrealize;
 
     /* device state */
-    const struct VMStateDescription *vmsd;
+    const VMStateDescription *vmsd;
 
     /* Private to qdev / bus.  */
     const char *bus_type;
@@ -425,7 +422,7 @@ void device_class_set_parent_unrealize(DeviceClass *dc,
                                        DeviceUnrealize dev_unrealize,
                                        DeviceUnrealize *parent_unrealize);
 
-const struct VMStateDescription *qdev_get_vmsd(DeviceState *dev);
+const VMStateDescription *qdev_get_vmsd(DeviceState *dev);
 
 const char *qdev_fw_name(DeviceState *dev);
 

@@ -12,12 +12,17 @@
 
 #include "qemu/osdep.h"
 #include "hw/sysbus.h"
+#include "migration/vmstate.h"
 #include "net/net.h"
 #include "net/eth.h"
-#include "hw/devices.h"
-#include "sysemu/sysemu.h"
+#include "hw/hw.h"
+#include "hw/irq.h"
+#include "hw/net/lan9118.h"
 #include "hw/ptimer.h"
+#include "hw/qdev-properties.h"
 #include "qemu/log.h"
+#include "qemu/main-loop.h"
+#include "qemu/module.h"
 /* For crc32 */
 #include <zlib.h>
 
@@ -175,7 +180,6 @@ static const VMStateDescription vmstate_lan9118_packet = {
     }
 };
 
-#define TYPE_LAN9118 "lan9118"
 #define LAN9118(obj) OBJECT_CHECK(lan9118_state, (obj), TYPE_LAN9118)
 
 typedef struct {

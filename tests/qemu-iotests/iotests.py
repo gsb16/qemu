@@ -61,7 +61,6 @@ cachemode = os.environ.get('CACHEMODE')
 qemu_default_machine = os.environ.get('QEMU_DEFAULT_MACHINE')
 
 socket_scm_helper = os.environ.get('SOCKET_SCM_HELPER', 'socket_scm_helper')
-debug = False
 
 luks_default_secret_object = 'secret,id=keysec0,data=' + \
                              os.environ.get('IMGKEYSECRET', '')
@@ -126,6 +125,11 @@ def qemu_img_pipe(*args):
         sys.stderr.write('qemu-img received signal %i: %s\n' % (-exitcode, ' '.join(qemu_img_args + list(args))))
     return subp.communicate()[0]
 
+def qemu_img_log(*args):
+    result = qemu_img_pipe(*args)
+    log(result, filters=[filter_testfiles])
+    return result
+
 def img_info_log(filename, filter_path=None, imgopts=False, extra_args=[]):
     args = [ 'info' ]
     if imgopts:
@@ -160,6 +164,10 @@ def qemu_io_silent(*args):
                          (-exitcode, ' '.join(args)))
     return exitcode
 
+def get_virtio_scsi_device():
+    if qemu_default_machine == 's390-ccw-virtio':
+        return 'virtio-scsi-ccw'
+    return 'virtio-scsi-pci'
 
 class QemuIoInteractive:
     def __init__(self, *args):
@@ -204,9 +212,9 @@ def qemu_nbd(*args):
     '''Run qemu-nbd in daemon mode and return the parent's exit code'''
     return subprocess.call(qemu_nbd_args + ['--fork'] + list(args))
 
-def qemu_nbd_pipe(*args):
+def qemu_nbd_early_pipe(*args):
     '''Run qemu-nbd in daemon mode and return both the parent's exit code
-       and its output'''
+       and its output in case of an error'''
     subp = subprocess.Popen(qemu_nbd_args + ['--fork'] + list(args),
                             stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT,
@@ -216,7 +224,10 @@ def qemu_nbd_pipe(*args):
         sys.stderr.write('qemu-nbd received signal %i: %s\n' %
                          (-exitcode,
                           ' '.join(qemu_nbd_args + ['--fork'] + list(args))))
-    return exitcode, subp.communicate()[0]
+    if exitcode == 0:
+        return exitcode, ''
+    else:
+        return exitcode, subp.communicate()[0]
 
 def compare_images(img1, img2, fmt1=imgfmt, fmt2=imgfmt):
     '''Return True if two image files are identical'''
@@ -351,31 +362,45 @@ class Timeout:
     def timeout(self, signum, frame):
         raise Exception(self.errmsg)
 
+def file_pattern(name):
+    return "{0}-{1}".format(os.getpid(), name)
 
-class FilePath(object):
-    '''An auto-generated filename that cleans itself up.
+class FilePaths(object):
+    """
+    FilePaths is an auto-generated filename that cleans itself up.
 
     Use this context manager to generate filenames and ensure that the file
     gets deleted::
 
-        with TestFilePath('test.img') as img_path:
+        with FilePaths(['test.img']) as img_path:
             qemu_img('create', img_path, '1G')
         # migration_sock_path is automatically deleted
-    '''
-    def __init__(self, name):
-        filename = '{0}-{1}'.format(os.getpid(), name)
-        self.path = os.path.join(test_dir, filename)
+    """
+    def __init__(self, names):
+        self.paths = []
+        for name in names:
+            self.paths.append(os.path.join(test_dir, file_pattern(name)))
 
     def __enter__(self):
-        return self.path
+        return self.paths
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         try:
-            os.remove(self.path)
+            for path in self.paths:
+                os.remove(path)
         except OSError:
             pass
         return False
 
+class FilePath(FilePaths):
+    """
+    FilePath is a specialization of FilePaths that takes a single filename.
+    """
+    def __init__(self, name):
+        super(FilePath, self).__init__([name])
+
+    def __enter__(self):
+        return self.paths[0]
 
 def file_path_remover():
     for path in reversed(file_path_remover.paths):
@@ -400,7 +425,7 @@ def file_path(*names):
 
     paths = []
     for name in names:
-        filename = '{0}-{1}'.format(os.getpid(), name)
+        filename = file_pattern(name)
         path = os.path.join(test_dir, filename)
         file_path_remover.paths.append(path)
         paths.append(path)
@@ -411,7 +436,7 @@ def remote_filename(path):
     if imgproto == 'file':
         return path
     elif imgproto == 'ssh':
-        return "ssh://127.0.0.1%s" % (path)
+        return "ssh://%s@127.0.0.1:22%s" % (os.environ.get('USER'), path)
     else:
         raise Exception("Protocol %s not supported" % (imgproto))
 
@@ -516,7 +541,7 @@ class VM(qtest.QEMUQtestMachine):
             output_list += [key + '=' + obj[key]]
         return ','.join(output_list)
 
-    def get_qmp_events_filtered(self, wait=True):
+    def get_qmp_events_filtered(self, wait=60.0):
         result = []
         for ev in self.get_qmp_events(wait=wait):
             result.append(filter_qmp_event(ev))
@@ -533,26 +558,83 @@ class VM(qtest.QEMUQtestMachine):
         return result
 
     # Returns None on success, and an error string on failure
-    def run_job(self, job, auto_finalize=True, auto_dismiss=False):
+    def run_job(self, job, auto_finalize=True, auto_dismiss=False,
+                pre_finalize=None, cancel=False, use_log=True, wait=60.0):
+        """
+        run_job moves a job from creation through to dismissal.
+
+        :param job: String. ID of recently-launched job
+        :param auto_finalize: Bool. True if the job was launched with
+                              auto_finalize. Defaults to True.
+        :param auto_dismiss: Bool. True if the job was launched with
+                             auto_dismiss=True. Defaults to False.
+        :param pre_finalize: Callback. A callable that takes no arguments to be
+                             invoked prior to issuing job-finalize, if any.
+        :param cancel: Bool. When true, cancels the job after the pre_finalize
+                       callback.
+        :param use_log: Bool. When false, does not log QMP messages.
+        :param wait: Float. Timeout value specifying how long to wait for any
+                     event, in seconds. Defaults to 60.0.
+        """
+        match_device = {'data': {'device': job}}
+        match_id = {'data': {'id': job}}
+        events = [
+            ('BLOCK_JOB_COMPLETED', match_device),
+            ('BLOCK_JOB_CANCELLED', match_device),
+            ('BLOCK_JOB_ERROR', match_device),
+            ('BLOCK_JOB_READY', match_device),
+            ('BLOCK_JOB_PENDING', match_id),
+            ('JOB_STATUS_CHANGE', match_id)
+        ]
         error = None
         while True:
-            for ev in self.get_qmp_events_filtered(wait=True):
-                if ev['event'] == 'JOB_STATUS_CHANGE':
-                    status = ev['data']['status']
-                    if status == 'aborting':
-                        result = self.qmp('query-jobs')
-                        for j in result['return']:
-                            if j['id'] == job:
-                                error = j['error']
-                                log('Job failed: %s' % (j['error']))
-                    elif status == 'pending' and not auto_finalize:
-                        self.qmp_log('job-finalize', id=job)
-                    elif status == 'concluded' and not auto_dismiss:
-                        self.qmp_log('job-dismiss', id=job)
-                    elif status == 'null':
-                        return error
+            ev = filter_qmp_event(self.events_wait(events))
+            if ev['event'] != 'JOB_STATUS_CHANGE':
+                if use_log:
+                    log(ev)
+                continue
+            status = ev['data']['status']
+            if status == 'aborting':
+                result = self.qmp('query-jobs')
+                for j in result['return']:
+                    if j['id'] == job:
+                        error = j['error']
+                        if use_log:
+                            log('Job failed: %s' % (j['error']))
+            elif status == 'pending' and not auto_finalize:
+                if pre_finalize:
+                    pre_finalize()
+                if cancel and use_log:
+                    self.qmp_log('job-cancel', id=job)
+                elif cancel:
+                    self.qmp('job-cancel', id=job)
+                elif use_log:
+                    self.qmp_log('job-finalize', id=job)
                 else:
-                    iotests.log(ev)
+                    self.qmp('job-finalize', id=job)
+            elif status == 'concluded' and not auto_dismiss:
+                if use_log:
+                    self.qmp_log('job-dismiss', id=job)
+                else:
+                    self.qmp('job-dismiss', id=job)
+            elif status == 'null':
+                return error
+
+    def enable_migration_events(self, name):
+        log('Enabling migration QMP events on %s...' % name)
+        log(self.qmp('migrate-set-capabilities', capabilities=[
+            {
+                'capability': 'events',
+                'state': True
+            }
+        ]))
+
+    def wait_migration(self):
+        while True:
+            event = self.event_wait('MIGRATION')
+            log(event, filters=[filter_qmp_event])
+            if event['data']['status'] == 'completed':
+                break
 
     def node_info(self, node_name):
         nodes = self.qmp('query-named-block-nodes')
@@ -596,9 +678,23 @@ class QMPTestCase(unittest.TestCase):
         self.fail('path "%s" has value "%s"' % (path, str(result)))
 
     def assert_qmp(self, d, path, value):
-        '''Assert that the value for a specific path in a QMP dict matches'''
+        '''Assert that the value for a specific path in a QMP dict
+           matches.  When given a list of values, assert that any of
+           them matches.'''
+
         result = self.dictpath(d, path)
-        self.assertEqual(result, value, 'values not equal "%s" and "%s"' % (str(result), str(value)))
+
+        # [] makes no sense as a list of valid values, so treat it as
+        # an actual single value.
+        if isinstance(value, list) and value != []:
+            for v in value:
+                if result == v:
+                    return
+            self.fail('no match for "%s" in %s' % (str(result), str(value)))
+        else:
+            self.assertEqual(result, value,
+                             'values not equal "%s" and "%s"'
+                                 % (str(result), str(value)))
 
     def assert_no_active_block_jobs(self):
         result = self.vm.qmp('query-block-jobs')
@@ -625,7 +721,7 @@ class QMPTestCase(unittest.TestCase):
         self.assertEqual(self.vm.flatten_qmp_object(json.loads(json_filename[5:])),
                          self.vm.flatten_qmp_object(reference))
 
-    def cancel_and_wait(self, drive='drive0', force=False, resume=False):
+    def cancel_and_wait(self, drive='drive0', force=False, resume=False, wait=60.0):
         '''Cancel a block job and wait for it to finish, returning the event'''
         result = self.vm.qmp('block-job-cancel', device=drive, force=force)
         self.assert_qmp(result, 'return', {})
@@ -636,7 +732,7 @@ class QMPTestCase(unittest.TestCase):
         cancelled = False
         result = None
         while not cancelled:
-            for event in self.vm.get_qmp_events(wait=True):
+            for event in self.vm.get_qmp_events(wait=wait):
                 if event['event'] == 'BLOCK_JOB_COMPLETED' or \
                    event['event'] == 'BLOCK_JOB_CANCELLED':
                     self.assert_qmp(event, 'data/device', drive)
@@ -649,10 +745,10 @@ class QMPTestCase(unittest.TestCase):
         self.assert_no_active_block_jobs()
         return result
 
-    def wait_until_completed(self, drive='drive0', check_offset=True):
+    def wait_until_completed(self, drive='drive0', check_offset=True, wait=60.0):
         '''Wait for a block job to finish, returning the event'''
         while True:
-            for event in self.vm.get_qmp_events(wait=True):
+            for event in self.vm.get_qmp_events(wait=wait):
                 if event['event'] == 'BLOCK_JOB_COMPLETED':
                     self.assert_qmp(event, 'data/device', drive)
                     self.assert_qmp_absent(event, 'data/error')
@@ -799,11 +895,22 @@ def skip_if_unsupported(required_formats=[], read_only=False):
         return func_wrapper
     return skip_test_decorator
 
-def main(supported_fmts=[], supported_oses=['linux'], supported_cache_modes=[],
-         unsupported_fmts=[]):
-    '''Run tests'''
+def execute_unittest(output, verbosity, debug):
+    runner = unittest.TextTestRunner(stream=output, descriptions=True,
+                                     verbosity=verbosity)
+    try:
+        # unittest.main() will use sys.exit(); so expect a SystemExit
+        # exception
+        unittest.main(testRunner=runner)
+    finally:
+        if not debug:
+            sys.stderr.write(re.sub(r'Ran (\d+) tests? in [\d.]+s',
+                                    r'Ran \1 tests', output.getvalue()))
 
-    global debug
+def execute_test(test_function=None,
+                 supported_fmts=[], supported_oses=['linux'],
+                 supported_cache_modes=[], unsupported_fmts=[]):
+    """Run either unittest or script-style tests."""
 
     # We are using TEST_DIR and QEMU_DEFAULT_MACHINE as proxies to
     # indicate that we're not being run via "check". There may be
@@ -835,13 +942,15 @@ def main(supported_fmts=[], supported_oses=['linux'], supported_cache_modes=[],
 
     logging.basicConfig(level=(logging.DEBUG if debug else logging.WARN))
 
-    class MyTestRunner(unittest.TextTestRunner):
-        def __init__(self, stream=output, descriptions=True, verbosity=verbosity):
-            unittest.TextTestRunner.__init__(self, stream, descriptions, verbosity)
+    if not test_function:
+        execute_unittest(output, verbosity, debug)
+    else:
+        test_function()
 
-    # unittest.main() will use sys.exit() so expect a SystemExit exception
-    try:
-        unittest.main(testRunner=MyTestRunner)
-    finally:
-        if not debug:
-            sys.stderr.write(re.sub(r'Ran (\d+) tests? in [\d.]+s', r'Ran \1 tests', output.getvalue()))
+def script_main(test_function, *args, **kwargs):
+    """Run script-style tests outside of the unittest framework"""
+    execute_test(test_function, *args, **kwargs)
+
+def main(*args, **kwargs):
+    """Run tests using the unittest framework"""
+    execute_test(None, *args, **kwargs)

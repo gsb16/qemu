@@ -12,7 +12,9 @@
 #include "hw/s390x/tod.h"
 #include "qapi/error.h"
 #include "qemu/error-report.h"
+#include "qemu/module.h"
 #include "sysemu/kvm.h"
+#include "migration/qemu-file-types.h"
 #include "migration/register.h"
 
 void s390_init_tod(void)

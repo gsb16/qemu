@@ -1,7 +1,7 @@
 #ifndef HW_M48T59_H
 #define HW_M48T59_H
 
-#include "qemu-common.h"
+#include "exec/hwaddr.h"
 #include "qom/object.h"
 
 #define TYPE_NVRAM "nvram"

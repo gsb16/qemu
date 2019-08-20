@@ -10,8 +10,8 @@
  */
 
 #include "qemu/osdep.h"
-#include "hw/hw.h"
 #include "hw/sysbus.h"
+#include "qemu/module.h"
 #include "qemu/timer.h"
 #include "hw/timer/sun4v-rtc.h"
 #include "trace.h"

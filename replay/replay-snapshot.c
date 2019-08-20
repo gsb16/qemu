@@ -11,10 +11,8 @@
 
 #include "qemu/osdep.h"
 #include "qapi/error.h"
-#include "qemu-common.h"
 #include "sysemu/replay.h"
 #include "replay-internal.h"
-#include "sysemu/sysemu.h"
 #include "monitor/monitor.h"
 #include "qapi/qmp/qstring.h"
 #include "qemu/error-report.h"
