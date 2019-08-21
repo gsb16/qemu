@@ -23,3 +23,4 @@ Contents:
    secure-coding-practices
    tcg
    bitops
+   coroutine
