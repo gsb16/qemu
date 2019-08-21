@@ -706,9 +706,11 @@ qemu-%.tar.bz2:
 # there for 'make install'). For an out-of-tree build we can just
 # use the docs/ subdirectory in the build tree as normal.
 ifeq ($(realpath $(SRC_PATH)),$(realpath .))
-MANUAL_BUILDDIR := docs/built
+# MANUAL_BUILDDIR := docs/built
+MANUAL_BUILDDIR := ../qemu-docs/html
 else
-MANUAL_BUILDDIR := docs
+# MANUAL_BUILDDIR := docs
+MANUAL_BUILDDIR := ../qemu-docs/html
 endif
 
 define clean-manual =
