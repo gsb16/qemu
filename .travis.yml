@@ -102,7 +102,7 @@ jobs:
         provider: pages # deploy on github pages
         skip_cleanup: true
         github_token: "$token" # defined via the Travis interface
-        local_dir: docs/built/devel
+        local_dir: docs/built
 
 
 matrix:
