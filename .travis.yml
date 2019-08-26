@@ -7,33 +7,6 @@ compiler:
   - gcc
 cache: ccache
 
-# Added for automatic documentation generation
-branches:
-  only:
-    - master
-    - gh-pages
-python:
-  - 3.7
-install:
-  - pip install --upgrade pip
-  - pip install -r requirements.txt # install the required packages
-script:
-  - skip # Travis requires a `script` property, but we do not need it
-stages:
-  - deploy
-jobs:
-  include:
-    - stage: deploy
-      name: Deploy to GitHub Pages
-      if: (NOT type IN (pull_request)) AND (branch = master) # only deploy if merging on master
-      script: make sphinxdocs
-      deploy:
-        provider: pages # deploy on github pages
-        skip_cleanup: true
-        github_token: "$token" # defined via the Travis interface
-        local_dir: docs/built/devel
-
-
 addons:
   apt:
     packages:
@@ -102,6 +75,32 @@ before_script:
   - ${SRC_DIR}/configure ${BASE_CONFIG} ${CONFIG} || { cat config.log && exit 1; }
 script:
   - make -j3 && travis_retry ${TEST_CMD}
+
+# Added for automatic documentation generation
+branches:
+  only:
+    - master
+    - gh-pages
+python:
+  - 3.7
+# install:
+#   - pip install --upgrade pip
+#   - pip install -r requirements.txt # install the required packages
+script:
+  - skip # Travis requires a `script` property, but we do not need it
+stages:
+  - deploy
+jobs:
+  include:
+    - stage: deploy
+      name: Deploy to GitHub Pages
+      if: (NOT type IN (pull_request)) AND (branch = master) # only deploy if merging on master
+      script: make sphinxdocs
+      deploy:
+        provider: pages # deploy on github pages
+        skip_cleanup: true
+        github_token: "$token" # defined via the Travis interface
+        local_dir: docs/built/devel
 
 
 matrix:
