@@ -24,3 +24,4 @@ Contents:
    tcg
    bitops
    coroutine
+   cpu
