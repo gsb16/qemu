@@ -1,0 +1,7 @@
+=============
+int128 header
+=============
+
+The documentation of QEMU's ``qemu/int128.h`` header.
+
+.. kernel-doc:: include/qemu/int128.h

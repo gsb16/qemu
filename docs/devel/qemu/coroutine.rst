@@ -2,7 +2,6 @@
 QEMU coroutine implementation
 =============================
 
-The use of header ``qemu/coroutine.h`` provides a test for
-qemu documentation with kernel-doc.
+The documentation for the header ``qemu/coroutine.h``.
 
 .. kernel-doc:: include/qemu/coroutine.h

@@ -11,17 +11,17 @@ modifying QEMU's source code.
 Contents:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
 
+   decodetree
    kconfig
    loads-stores
    memory
    migration
+   qapi
+   qemu
+   qom
    stable-process
-   testing
-   decodetree
    secure-coding-practices
    tcg
-   bitops
-   coroutine
-   cpu
+   testing
