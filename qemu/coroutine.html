@@ -1,0 +1,532 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>QEMU coroutine implementation &mdash; QEMU 4.1.50 (v4.0.0-470-g250533e6-dirty) documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '4.1.50 (v4.0.0-470-g250533e6-dirty)',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  false
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="QEMU 4.1.50 (v4.0.0-470-g250533e6-dirty) documentation" href="../index.html" />
+    <link rel="up" title="QEMU headers" href="../qemu.html" />
+    <link rel="next" title="atomic128 header" href="atomic128.html" />
+    <link rel="prev" title="Bitwise operations" href="bitops.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="qemu-coroutine-implementation">
+<h1>QEMU coroutine implementation<a class="headerlink" href="#qemu-coroutine-implementation" title="Permalink to this headline">¶</a></h1>
+<p>The documentation for the header <code class="docutils literal"><span class="pre">qemu/coroutine.h</span></code>.</p>
+<dl class="function">
+<dt id="c.coroutine_fn">
+<code class="descname">coroutine_fn</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.coroutine_fn" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<p><strong>Description</strong></p>
+<p>cooperative userspace threading.  These functions provide a simple but
+useful flavor of coroutines that is suitable for writing sequential code,
+rather than callbacks, for operations that need to give up control while
+waiting for events to complete.</p>
+<p>These functions are re-entrant and may be used outside the global mutex.</p>
+<dl class="function">
+<dt id="c.CoroutineEntry">
+typedef void <a class="reference internal" href="#c.coroutine_fn" title="coroutine_fn">coroutine_fn</a> <code class="descname">CoroutineEntry</code><span class="sig-paren">(</span>void *<em>&nbsp;opaque</em><span class="sig-paren">)</span><a class="headerlink" href="#c.CoroutineEntry" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">opaque</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>When the coroutine is entered for the first time, opaque is passed in as an
+argument.</p>
+<p>When this function returns, the coroutine is destroyed automatically and
+execution continues in the caller who last entered the coroutine.</p>
+<dl class="function">
+<dt id="c.qemu_coroutine_create">
+Coroutine * <code class="descname">qemu_coroutine_create</code><span class="sig-paren">(</span><a class="reference internal" href="#c.CoroutineEntry" title="CoroutineEntry">CoroutineEntry</a> *<em>&nbsp;entry</em>, void *<em>&nbsp;opaque</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_coroutine_create" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">CoroutineEntry</span> <span class="pre">*</span> <span class="pre">entry</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">opaque</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Use qemu_coroutine_enter() to actually transfer control to the coroutine.
+The opaque argument is passed as the argument to the entry point.</p>
+<dl class="function">
+<dt id="c.qemu_coroutine_enter">
+void <code class="descname">qemu_coroutine_enter</code><span class="sig-paren">(</span>Coroutine *<em>&nbsp;coroutine</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_coroutine_enter" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">Coroutine</span> <span class="pre">*</span> <span class="pre">coroutine</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<dl class="function">
+<dt id="c.qemu_coroutine_enter_if_inactive">
+void <code class="descname">qemu_coroutine_enter_if_inactive</code><span class="sig-paren">(</span>Coroutine *<em>&nbsp;co</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_coroutine_enter_if_inactive" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">Coroutine</span> <span class="pre">*</span> <span class="pre">co</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>stack of the running coroutine). Otherwise, do nothing.</p>
+<dl class="function">
+<dt id="c.qemu_aio_coroutine_enter">
+void <code class="descname">qemu_aio_coroutine_enter</code><span class="sig-paren">(</span>AioContext *<em>&nbsp;ctx</em>, Coroutine *<em>&nbsp;co</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_aio_coroutine_enter" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">AioContext</span> <span class="pre">*</span> <span class="pre">ctx</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal"><span class="pre">Coroutine</span> <span class="pre">*</span> <span class="pre">co</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<dl class="function">
+<dt id="c.qemu_coroutine_yield">
+void <a class="reference internal" href="#c.coroutine_fn" title="coroutine_fn">coroutine_fn</a> <code class="descname">qemu_coroutine_yield</code><span class="sig-paren">(</span>void<span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_coroutine_yield" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">void</span></code></dt>
+<dd>no arguments</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>This function does not return until the coroutine is re-entered using
+qemu_coroutine_enter().</p>
+<dl class="function">
+<dt id="c.qemu_in_coroutine">
+<a class="reference internal" href="../qom/object_interfaces.html#c.bool" title="bool">bool</a> <code class="descname">qemu_in_coroutine</code><span class="sig-paren">(</span>void<span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_in_coroutine" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">void</span></code></dt>
+<dd>no arguments</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>This can be used to write functions that work both when in coroutine context
+and when not in coroutine context.  Note that such functions cannot use the
+coroutine_fn annotation since they work outside coroutine context.</p>
+<dl class="function">
+<dt id="c.qemu_coroutine_entered">
+<a class="reference internal" href="../qom/object_interfaces.html#c.bool" title="bool">bool</a> <code class="descname">qemu_coroutine_entered</code><span class="sig-paren">(</span>Coroutine *<em>&nbsp;co</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_coroutine_entered" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">Coroutine</span> <span class="pre">*</span> <span class="pre">co</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>A coroutine is &#8220;entered&#8221; if it has not yielded from the current
+qemu_coroutine_enter() call used to run it.  This does not mean that the
+coroutine is currently executing code since it may have transferred control
+to another coroutine using qemu_coroutine_enter().</p>
+<p>When several coroutines enter each other there may be no way to know which
+ones have already been entered.  In such situations this function can be
+used to avoid recursively entering coroutines.</p>
+<dl class="function">
+<dt id="c.qemu_co_mutex_init">
+void <code class="descname">qemu_co_mutex_init</code><span class="sig-paren">(</span>CoMutex *<em>&nbsp;mutex</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_co_mutex_init" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">CoMutex</span> <span class="pre">*</span> <span class="pre">mutex</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>on the CoMutex.</p>
+<dl class="function">
+<dt id="c.qemu_co_mutex_lock">
+void <a class="reference internal" href="#c.coroutine_fn" title="coroutine_fn">coroutine_fn</a> <code class="descname">qemu_co_mutex_lock</code><span class="sig-paren">(</span>CoMutex *<em>&nbsp;mutex</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_co_mutex_lock" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">CoMutex</span> <span class="pre">*</span> <span class="pre">mutex</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>transferred to the caller of the current coroutine.</p>
+<dl class="function">
+<dt id="c.qemu_co_mutex_unlock">
+void <a class="reference internal" href="#c.coroutine_fn" title="coroutine_fn">coroutine_fn</a> <code class="descname">qemu_co_mutex_unlock</code><span class="sig-paren">(</span>CoMutex *<em>&nbsp;mutex</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_co_mutex_unlock" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">CoMutex</span> <span class="pre">*</span> <span class="pre">mutex</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>lock to be run.</p>
+<dl class="function">
+<dt id="c.qemu_co_queue_init">
+void <code class="descname">qemu_co_queue_init</code><span class="sig-paren">(</span>CoQueue *<em>&nbsp;queue</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_co_queue_init" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">CoQueue</span> <span class="pre">*</span> <span class="pre">queue</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>on the CoQueue.</p>
+<dl class="function">
+<dt id="c.qemu_co_queue_wait">
+<code class="descname">qemu_co_queue_wait</code><span class="sig-paren">(</span>queue, lock<span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_co_queue_wait" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">queue</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal"><span class="pre">lock</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>caller of the coroutine.  The mutex is unlocked during the wait and
+locked again afterwards.</p>
+<dl class="function">
+<dt id="c.qemu_co_queue_next">
+<a class="reference internal" href="../qom/object_interfaces.html#c.bool" title="bool">bool</a> <a class="reference internal" href="#c.coroutine_fn" title="coroutine_fn">coroutine_fn</a> <code class="descname">qemu_co_queue_next</code><span class="sig-paren">(</span>CoQueue *<em>&nbsp;queue</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_co_queue_next" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">CoQueue</span> <span class="pre">*</span> <span class="pre">queue</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Returns true if a coroutine was removed, false if the queue is empty.</p>
+<dl class="function">
+<dt id="c.qemu_co_queue_restart_all">
+void <a class="reference internal" href="#c.coroutine_fn" title="coroutine_fn">coroutine_fn</a> <code class="descname">qemu_co_queue_restart_all</code><span class="sig-paren">(</span>CoQueue *<em>&nbsp;queue</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_co_queue_restart_all" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">CoQueue</span> <span class="pre">*</span> <span class="pre">queue</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<dl class="function">
+<dt id="c.qemu_co_enter_next">
+<code class="descname">qemu_co_enter_next</code><span class="sig-paren">(</span>queue, lock<span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_co_enter_next" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">queue</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal"><span class="pre">lock</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>qemu_co_queue_next, this function releases the lock during aio_co_wake
+because it is meant to be used outside coroutine context; in that case, the
+coroutine is entered immediately, before qemu_co_enter_next returns.</p>
+<p>If used in coroutine context, qemu_co_enter_next is equivalent to
+qemu_co_queue_next.</p>
+<dl class="function">
+<dt id="c.qemu_co_queue_empty">
+<a class="reference internal" href="../qom/object_interfaces.html#c.bool" title="bool">bool</a> <code class="descname">qemu_co_queue_empty</code><span class="sig-paren">(</span>CoQueue *<em>&nbsp;queue</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_co_queue_empty" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">CoQueue</span> <span class="pre">*</span> <span class="pre">queue</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<dl class="function">
+<dt id="c.qemu_co_rwlock_init">
+void <code class="descname">qemu_co_rwlock_init</code><span class="sig-paren">(</span>CoRwlock *<em>&nbsp;lock</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_co_rwlock_init" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">CoRwlock</span> <span class="pre">*</span> <span class="pre">lock</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>is used on the CoRwlock</p>
+<dl class="function">
+<dt id="c.qemu_co_rwlock_rdlock">
+void <code class="descname">qemu_co_rwlock_rdlock</code><span class="sig-paren">(</span>CoRwlock *<em>&nbsp;lock</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_co_rwlock_rdlock" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">CoRwlock</span> <span class="pre">*</span> <span class="pre">lock</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>of a parallel writer, control is transferred to the caller of the current
+coroutine.</p>
+<dl class="function">
+<dt id="c.qemu_co_rwlock_upgrade">
+void <code class="descname">qemu_co_rwlock_upgrade</code><span class="sig-paren">(</span>CoRwlock *<em>&nbsp;lock</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_co_rwlock_upgrade" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">CoRwlock</span> <span class="pre">*</span> <span class="pre">lock</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<p><strong>Description</strong></p>
+<p><strong>qemu_co_rwlock_unlock</strong> followed by a separate <strong>qemu_co_rwlock_wrlock</strong>.
+However, if the lock cannot be upgraded immediately, control is transferred
+to the caller of the current coroutine.  Also, <strong>qemu_co_rwlock_upgrade</strong>
+only overrides CoRwlock fairness if there are no concurrent readers, so
+another writer might run while <strong>qemu_co_rwlock_upgrade</strong> blocks.</p>
+<dl class="function">
+<dt id="c.qemu_co_rwlock_downgrade">
+void <code class="descname">qemu_co_rwlock_downgrade</code><span class="sig-paren">(</span>CoRwlock *<em>&nbsp;lock</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_co_rwlock_downgrade" title="Permalink to this definition">¶</a></dt>
+<dd><p>side critical section to a reader. Downgrading with <strong>qemu_co_rwlock_downgrade</strong> never blocks, unlike <strong>qemu_co_rwlock_unlock</strong> followed by <strong>qemu_co_rwlock_rdlock</strong>. This makes it more efficient, but may also sometimes be necessary for correctness.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">CoRwlock</span> <span class="pre">*</span> <span class="pre">lock</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<dl class="function">
+<dt id="c.qemu_co_rwlock_wrlock">
+void <code class="descname">qemu_co_rwlock_wrlock</code><span class="sig-paren">(</span>CoRwlock *<em>&nbsp;lock</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_co_rwlock_wrlock" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">CoRwlock</span> <span class="pre">*</span> <span class="pre">lock</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>of a parallel reader, control is transferred to the caller of the current
+coroutine.</p>
+<dl class="function">
+<dt id="c.qemu_co_rwlock_unlock">
+void <code class="descname">qemu_co_rwlock_unlock</code><span class="sig-paren">(</span>CoRwlock *<em>&nbsp;lock</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_co_rwlock_unlock" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">CoRwlock</span> <span class="pre">*</span> <span class="pre">lock</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>waiting for this lock to be run.</p>
+<dl class="function">
+<dt id="c.qemu_co_sleep_ns">
+void <a class="reference internal" href="#c.coroutine_fn" title="coroutine_fn">coroutine_fn</a> <code class="descname">qemu_co_sleep_ns</code><span class="sig-paren">(</span>QEMUClockType<em>&nbsp;type</em>, int64_t<em>&nbsp;ns</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_co_sleep_ns" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUClockType</span> <span class="pre">type</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal"><span class="pre">int64_t</span> <span class="pre">ns</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<dl class="function">
+<dt id="c.yield_until_fd_readable">
+void <a class="reference internal" href="#c.coroutine_fn" title="coroutine_fn">coroutine_fn</a> <code class="descname">yield_until_fd_readable</code><span class="sig-paren">(</span>int<em>&nbsp;fd</em><span class="sig-paren">)</span><a class="headerlink" href="#c.yield_until_fd_readable" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">int</span> <span class="pre">fd</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Note that this function clobbers the handlers for the file descriptor.</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">QEMU</a></h1>
+
+
+
+<p class="blurb">Developers Guide</p>
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=&repo=&type=watch&count=true&size=large"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../decodetree.html">Decodetree Specification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../kconfig.html">QEMU and Kconfig</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../loads-stores.html">Load and Store APIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../memory.html">The memory API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../migration.html">Migration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../qapi.html">QAPI headers</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../qemu.html">QEMU headers</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="bitops.html">Bitwise operations</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="">QEMU coroutine implementation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="atomic128.html">atomic128 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="atomic.html">atomic header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="base64.html">base64 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bcd.html">bcd header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bitmap.html">bitmap header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bswap.html">bswap header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="buffer.html">buffer header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="compiler.html">compiler header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="config-file.html">config-file header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="coroutine_int.html">coroutine_int header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cpuid.html">cpuid header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="crc32c.html">crc32c header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ctype.html">ctype header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cutils.html">cutils header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="drm.html">drm header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="envlist.html">envlist header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="error-report.html">error-report header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="event_notifier.html">event_notifier header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fifo32.html">fifo32 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fifo8.html">fifo8 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="filemonitor.html">filemonitor header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="futex.html">futex header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guest-random.html">guest-random header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="hbitmap.html">hbitmap header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="help_option.html">help_option header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="host-utils.html">host-utils header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="id.html">id header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="int128.html">int128 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="iova-tree.html">iova-tree header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="iov.html">iov header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jhash.html">jhash header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="job.html">job header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="lockable.html">lockable header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="log-for-trace.html">log-for-trace header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="log.html">log header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="main-loop.html">main-loop header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="memfd.html">memfd header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mmap-alloc.html">mmap-alloc header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="module.html">module header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notify.html">notify header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="option.html">option header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="option_int.html">option_int header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="osdep.html">osdep header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="path.html">path header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pmem.html">pmem header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="processor.html">processor header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qdist.html">qdist header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qemu-print.html">qemu-print header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qht.html">qht header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qsp.html">qsp header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="queue.html">queue header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="range.html">range header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ratelimit.html">ratelimit header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rcu.html">rcu header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rcu_queue.html">rcu_queue header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="readline.html">readline header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="seqlock.html">seqlock header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sockets.html">sockets header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stats64.html">stats64 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sys_membarrier.html">sys_membarrier header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="systemd.html">systemd header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="thread.html">thread header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="thread-posix.html">thread-posix header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="thread-win32.html">thread-win32 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="throttle.html">throttle header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="throttle-options.html">throttle-options header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="timed-average.html">timed-average header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="timer.html">timer header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="typedefs.html">typedefs header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unicode.html">unicode header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="units.html">units header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="uri.html">uri header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="uuid.html">uuid header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="vfio-helpers.html">vfio-helpers header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="win_dump_defs.html">win_dump_defs header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="xattr.html">xattr header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="xxhash.html">xxhash header</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../qom.html">QOM headers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../stable-process.html">QEMU and the stable process</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../secure-coding-practices.html">Secure Coding Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tcg.html">Translator Internals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testing.html">Testing in QEMU</a></li>
+</ul>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, The QEMU Project Developers.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

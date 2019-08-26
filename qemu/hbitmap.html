@@ -1,0 +1,583 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>hbitmap header &mdash; QEMU 4.1.50 (v4.0.0-470-g250533e6-dirty) documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '4.1.50 (v4.0.0-470-g250533e6-dirty)',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  false
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="QEMU 4.1.50 (v4.0.0-470-g250533e6-dirty) documentation" href="../index.html" />
+    <link rel="up" title="QEMU headers" href="../qemu.html" />
+    <link rel="next" title="help_option header" href="help_option.html" />
+    <link rel="prev" title="guest-random header" href="guest-random.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="hbitmap-header">
+<h1>hbitmap header<a class="headerlink" href="#hbitmap-header" title="Permalink to this headline">¶</a></h1>
+<p>The documentation of QEMU&#8217;s <code class="docutils literal"><span class="pre">qemu/hbitmap.h</span></code> header.</p>
+<dl class="function">
+<dt id="c.hbitmap_alloc">
+HBitmap * <code class="descname">hbitmap_alloc</code><span class="sig-paren">(</span>uint64_t<em>&nbsp;size</em>, int<em>&nbsp;granularity</em><span class="sig-paren">)</span><a class="headerlink" href="#c.hbitmap_alloc" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">size</span></code></dt>
+<dd>Number of bits in the bitmap.</dd>
+<dt><code class="docutils literal"><span class="pre">int</span> <span class="pre">granularity</span></code></dt>
+<dd>Granularity of the bitmap.  Aligned groups of 2^**granularity**
+bits will be represented by a single bit.  Each operation on a
+range of bits first rounds the bits to determine which group they land
+in, and then affect the entire set; iteration will only visit the first
+bit of each group.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Allocate a new HBitmap.</p>
+<dl class="function">
+<dt id="c.hbitmap_truncate">
+void <code class="descname">hbitmap_truncate</code><span class="sig-paren">(</span>HBitmap *<em>&nbsp;hb</em>, uint64_t<em>&nbsp;size</em><span class="sig-paren">)</span><a class="headerlink" href="#c.hbitmap_truncate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">HBitmap</span> <span class="pre">*</span> <span class="pre">hb</span></code></dt>
+<dd>The bitmap to change the size of.</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">size</span></code></dt>
+<dd>The number of elements to change the bitmap to accommodate.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>truncate or grow an existing bitmap to accommodate a new number of elements.
+This may invalidate existing HBitmapIterators.</p>
+<dl class="function">
+<dt id="c.hbitmap_merge">
+<a class="reference internal" href="../qom/object_interfaces.html#c.bool" title="bool">bool</a> <code class="descname">hbitmap_merge</code><span class="sig-paren">(</span>const HBitmap *<em>&nbsp;a</em>, const HBitmap *<em>&nbsp;b</em>, HBitmap *<em>&nbsp;result</em><span class="sig-paren">)</span><a class="headerlink" href="#c.hbitmap_merge" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">HBitmap</span> <span class="pre">*</span> <span class="pre">a</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">HBitmap</span> <span class="pre">*</span> <span class="pre">b</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal"><span class="pre">HBitmap</span> <span class="pre">*</span> <span class="pre">result</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Store result of merging <strong>a</strong> and <strong>b</strong> into <strong>result</strong>.
+<strong>result</strong> is allowed to be equal to <strong>a</strong> or <strong>b</strong>.</p>
+<dl class="docutils">
+<dt>Return true if the merge was successful,</dt>
+<dd>false if it was not attempted.</dd>
+</dl>
+<dl class="function">
+<dt id="c.hbitmap_can_merge">
+<a class="reference internal" href="../qom/object_interfaces.html#c.bool" title="bool">bool</a> <code class="descname">hbitmap_can_merge</code><span class="sig-paren">(</span>const HBitmap *<em>&nbsp;a</em>, const HBitmap *<em>&nbsp;b</em><span class="sig-paren">)</span><a class="headerlink" href="#c.hbitmap_can_merge" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">HBitmap</span> <span class="pre">*</span> <span class="pre">a</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">HBitmap</span> <span class="pre">*</span> <span class="pre">b</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>hbitmap_can_merge(a, b) &amp;&amp; hbitmap_can_merge(a, result) is sufficient and
+necessary for hbitmap_merge will not fail.</p>
+<dl class="function">
+<dt id="c.hbitmap_empty">
+<a class="reference internal" href="../qom/object_interfaces.html#c.bool" title="bool">bool</a> <code class="descname">hbitmap_empty</code><span class="sig-paren">(</span>const HBitmap *<em>&nbsp;hb</em><span class="sig-paren">)</span><a class="headerlink" href="#c.hbitmap_empty" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">HBitmap</span> <span class="pre">*</span> <span class="pre">hb</span></code></dt>
+<dd>HBitmap to operate on.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Return whether the bitmap is empty.</p>
+<dl class="function">
+<dt id="c.hbitmap_granularity">
+int <code class="descname">hbitmap_granularity</code><span class="sig-paren">(</span>const HBitmap *<em>&nbsp;hb</em><span class="sig-paren">)</span><a class="headerlink" href="#c.hbitmap_granularity" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">HBitmap</span> <span class="pre">*</span> <span class="pre">hb</span></code></dt>
+<dd>HBitmap to operate on.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Return the granularity of the HBitmap.</p>
+<dl class="function">
+<dt id="c.hbitmap_count">
+uint64_t <code class="descname">hbitmap_count</code><span class="sig-paren">(</span>const HBitmap *<em>&nbsp;hb</em><span class="sig-paren">)</span><a class="headerlink" href="#c.hbitmap_count" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">HBitmap</span> <span class="pre">*</span> <span class="pre">hb</span></code></dt>
+<dd>HBitmap to operate on.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Return the number of bits set in the HBitmap.</p>
+<dl class="function">
+<dt id="c.hbitmap_set">
+void <code class="descname">hbitmap_set</code><span class="sig-paren">(</span>HBitmap *<em>&nbsp;hb</em>, uint64_t<em>&nbsp;start</em>, uint64_t<em>&nbsp;count</em><span class="sig-paren">)</span><a class="headerlink" href="#c.hbitmap_set" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">HBitmap</span> <span class="pre">*</span> <span class="pre">hb</span></code></dt>
+<dd>HBitmap to operate on.</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">start</span></code></dt>
+<dd>First bit to set (0-based).</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">count</span></code></dt>
+<dd>Number of bits to set.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Set a consecutive range of bits in an HBitmap.</p>
+<dl class="function">
+<dt id="c.hbitmap_reset">
+void <code class="descname">hbitmap_reset</code><span class="sig-paren">(</span>HBitmap *<em>&nbsp;hb</em>, uint64_t<em>&nbsp;start</em>, uint64_t<em>&nbsp;count</em><span class="sig-paren">)</span><a class="headerlink" href="#c.hbitmap_reset" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">HBitmap</span> <span class="pre">*</span> <span class="pre">hb</span></code></dt>
+<dd>HBitmap to operate on.</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">start</span></code></dt>
+<dd>First bit to reset (0-based).</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">count</span></code></dt>
+<dd>Number of bits to reset.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Reset a consecutive range of bits in an HBitmap.</p>
+<dl class="function">
+<dt id="c.hbitmap_reset_all">
+void <code class="descname">hbitmap_reset_all</code><span class="sig-paren">(</span>HBitmap *<em>&nbsp;hb</em><span class="sig-paren">)</span><a class="headerlink" href="#c.hbitmap_reset_all" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">HBitmap</span> <span class="pre">*</span> <span class="pre">hb</span></code></dt>
+<dd>HBitmap to operate on.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Reset all bits in an HBitmap.</p>
+<dl class="function">
+<dt id="c.hbitmap_get">
+<a class="reference internal" href="../qom/object_interfaces.html#c.bool" title="bool">bool</a> <code class="descname">hbitmap_get</code><span class="sig-paren">(</span>const HBitmap *<em>&nbsp;hb</em>, uint64_t<em>&nbsp;item</em><span class="sig-paren">)</span><a class="headerlink" href="#c.hbitmap_get" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">HBitmap</span> <span class="pre">*</span> <span class="pre">hb</span></code></dt>
+<dd>HBitmap to operate on.</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">item</span></code></dt>
+<dd>Bit to query (0-based).</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Return whether the <strong>item</strong>-th bit in an HBitmap is set.</p>
+<dl class="function">
+<dt id="c.hbitmap_is_serializable">
+<a class="reference internal" href="../qom/object_interfaces.html#c.bool" title="bool">bool</a> <code class="descname">hbitmap_is_serializable</code><span class="sig-paren">(</span>const HBitmap *<em>&nbsp;hb</em><span class="sig-paren">)</span><a class="headerlink" href="#c.hbitmap_is_serializable" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">HBitmap</span> <span class="pre">*</span> <span class="pre">hb</span></code></dt>
+<dd>HBitmap which should be (de-)serialized.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Returns whether the bitmap can actually be (de-)serialized. Other
+(de-)serialization functions may only be invoked if this function returns
+true.</p>
+<p>Calling (de-)serialization functions does not affect a bitmap&#8217;s
+(de-)serializability.</p>
+<dl class="function">
+<dt id="c.hbitmap_serialization_align">
+uint64_t <code class="descname">hbitmap_serialization_align</code><span class="sig-paren">(</span>const HBitmap *<em>&nbsp;hb</em><span class="sig-paren">)</span><a class="headerlink" href="#c.hbitmap_serialization_align" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">HBitmap</span> <span class="pre">*</span> <span class="pre">hb</span></code></dt>
+<dd>HBitmap to operate on.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Required alignment of serialization chunks, used by other serialization
+functions. For every chunk:
+1. Chunk start should be aligned to this granularity.
+2. Chunk size should be aligned too, except for last chunk (for which</p>
+<blockquote>
+<div>start + count == hb-&gt;size)</div></blockquote>
+<dl class="function">
+<dt id="c.hbitmap_serialization_size">
+uint64_t <code class="descname">hbitmap_serialization_size</code><span class="sig-paren">(</span>const HBitmap *<em>&nbsp;hb</em>, uint64_t<em>&nbsp;start</em>, uint64_t<em>&nbsp;count</em><span class="sig-paren">)</span><a class="headerlink" href="#c.hbitmap_serialization_size" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">HBitmap</span> <span class="pre">*</span> <span class="pre">hb</span></code></dt>
+<dd>HBitmap to operate on.</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">start</span></code></dt>
+<dd>Starting bit</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">count</span></code></dt>
+<dd>Number of bits</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Return number of bytes hbitmap_(de)serialize_part needs</p>
+<dl class="function">
+<dt id="c.hbitmap_serialize_part">
+void <code class="descname">hbitmap_serialize_part</code><span class="sig-paren">(</span>const HBitmap *<em>&nbsp;hb</em>, uint8_t *<em>&nbsp;buf</em>, uint64_t<em>&nbsp;start</em>, uint64_t<em>&nbsp;count</em><span class="sig-paren">)</span><a class="headerlink" href="#c.hbitmap_serialize_part" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">HBitmap</span> <span class="pre">*</span> <span class="pre">hb</span></code></dt>
+<dd>HBitmap to operate on.</dd>
+<dt><code class="docutils literal"><span class="pre">uint8_t</span> <span class="pre">*</span> <span class="pre">buf</span></code></dt>
+<dd>Buffer to store serialized bitmap.</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">start</span></code></dt>
+<dd>First bit to store.</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">count</span></code></dt>
+<dd>Number of bits to store.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Stores HBitmap data corresponding to given region. The format of saved data
+is linear sequence of bits, so it can be used by hbitmap_deserialize_part
+independently of endianness and size of HBitmap level array elements</p>
+<dl class="function">
+<dt id="c.hbitmap_deserialize_part">
+void <code class="descname">hbitmap_deserialize_part</code><span class="sig-paren">(</span>HBitmap *<em>&nbsp;hb</em>, uint8_t *<em>&nbsp;buf</em>, uint64_t<em>&nbsp;start</em>, uint64_t<em>&nbsp;count</em>, <a class="reference internal" href="../qom/object_interfaces.html#c.bool" title="bool">bool</a><em>&nbsp;finish</em><span class="sig-paren">)</span><a class="headerlink" href="#c.hbitmap_deserialize_part" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">HBitmap</span> <span class="pre">*</span> <span class="pre">hb</span></code></dt>
+<dd>HBitmap to operate on.</dd>
+<dt><code class="docutils literal"><span class="pre">uint8_t</span> <span class="pre">*</span> <span class="pre">buf</span></code></dt>
+<dd>Buffer to restore bitmap data from.</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">start</span></code></dt>
+<dd>First bit to restore.</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">count</span></code></dt>
+<dd>Number of bits to restore.</dd>
+<dt><code class="docutils literal"><span class="pre">bool</span> <span class="pre">finish</span></code></dt>
+<dd>Whether to call hbitmap_deserialize_finish automatically.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Restores HBitmap data corresponding to given region. The format is the same
+as for hbitmap_serialize_part.</p>
+<p>If <strong>finish</strong> is false, caller must call hbitmap_serialize_finish before using
+the bitmap.</p>
+<dl class="function">
+<dt id="c.hbitmap_deserialize_zeroes">
+void <code class="descname">hbitmap_deserialize_zeroes</code><span class="sig-paren">(</span>HBitmap *<em>&nbsp;hb</em>, uint64_t<em>&nbsp;start</em>, uint64_t<em>&nbsp;count</em>, <a class="reference internal" href="../qom/object_interfaces.html#c.bool" title="bool">bool</a><em>&nbsp;finish</em><span class="sig-paren">)</span><a class="headerlink" href="#c.hbitmap_deserialize_zeroes" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">HBitmap</span> <span class="pre">*</span> <span class="pre">hb</span></code></dt>
+<dd>HBitmap to operate on.</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">start</span></code></dt>
+<dd>First bit to restore.</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">count</span></code></dt>
+<dd>Number of bits to restore.</dd>
+<dt><code class="docutils literal"><span class="pre">bool</span> <span class="pre">finish</span></code></dt>
+<dd>Whether to call hbitmap_deserialize_finish automatically.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Fills the bitmap with zeroes.</p>
+<p>If <strong>finish</strong> is false, caller must call hbitmap_serialize_finish before using
+the bitmap.</p>
+<dl class="function">
+<dt id="c.hbitmap_deserialize_ones">
+void <code class="descname">hbitmap_deserialize_ones</code><span class="sig-paren">(</span>HBitmap *<em>&nbsp;hb</em>, uint64_t<em>&nbsp;start</em>, uint64_t<em>&nbsp;count</em>, <a class="reference internal" href="../qom/object_interfaces.html#c.bool" title="bool">bool</a><em>&nbsp;finish</em><span class="sig-paren">)</span><a class="headerlink" href="#c.hbitmap_deserialize_ones" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">HBitmap</span> <span class="pre">*</span> <span class="pre">hb</span></code></dt>
+<dd>HBitmap to operate on.</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">start</span></code></dt>
+<dd>First bit to restore.</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">count</span></code></dt>
+<dd>Number of bits to restore.</dd>
+<dt><code class="docutils literal"><span class="pre">bool</span> <span class="pre">finish</span></code></dt>
+<dd>Whether to call hbitmap_deserialize_finish automatically.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Fills the bitmap with ones.</p>
+<p>If <strong>finish</strong> is false, caller must call hbitmap_serialize_finish before using
+the bitmap.</p>
+<dl class="function">
+<dt id="c.hbitmap_deserialize_finish">
+void <code class="descname">hbitmap_deserialize_finish</code><span class="sig-paren">(</span>HBitmap *<em>&nbsp;hb</em><span class="sig-paren">)</span><a class="headerlink" href="#c.hbitmap_deserialize_finish" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">HBitmap</span> <span class="pre">*</span> <span class="pre">hb</span></code></dt>
+<dd>HBitmap to operate on.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Repair HBitmap after calling hbitmap_deserialize_data. Actually, all HBitmap
+layers are restored here.</p>
+<dl class="function">
+<dt id="c.hbitmap_sha256">
+char * <code class="descname">hbitmap_sha256</code><span class="sig-paren">(</span>const HBitmap *<em>&nbsp;bitmap</em>, Error **<em>&nbsp;errp</em><span class="sig-paren">)</span><a class="headerlink" href="#c.hbitmap_sha256" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">HBitmap</span> <span class="pre">*</span> <span class="pre">bitmap</span></code></dt>
+<dd>HBitmap to operate on.</dd>
+<dt><code class="docutils literal"><span class="pre">Error</span> <span class="pre">**</span> <span class="pre">errp</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Returns SHA256 hash of the last level.</p>
+<dl class="function">
+<dt id="c.hbitmap_free">
+void <code class="descname">hbitmap_free</code><span class="sig-paren">(</span>HBitmap *<em>&nbsp;hb</em><span class="sig-paren">)</span><a class="headerlink" href="#c.hbitmap_free" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">HBitmap</span> <span class="pre">*</span> <span class="pre">hb</span></code></dt>
+<dd>HBitmap to operate on.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Free an HBitmap and all of its associated memory.</p>
+<dl class="function">
+<dt id="c.hbitmap_iter_init">
+void <code class="descname">hbitmap_iter_init</code><span class="sig-paren">(</span>HBitmapIter *<em>&nbsp;hbi</em>, const HBitmap *<em>&nbsp;hb</em>, uint64_t<em>&nbsp;first</em><span class="sig-paren">)</span><a class="headerlink" href="#c.hbitmap_iter_init" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">HBitmapIter</span> <span class="pre">*</span> <span class="pre">hbi</span></code></dt>
+<dd>HBitmapIter to initialize.</dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">HBitmap</span> <span class="pre">*</span> <span class="pre">hb</span></code></dt>
+<dd>HBitmap to iterate on.</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">first</span></code></dt>
+<dd>First bit to visit (0-based, must be strictly less than the
+size of the bitmap).</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Set up <strong>hbi</strong> to iterate on the HBitmap <strong>hb</strong>.  hbitmap_iter_next will return
+the lowest-numbered bit that is set in <strong>hb</strong>, starting at <strong>first</strong>.</p>
+<p>Concurrent setting of bits is acceptable, and will at worst cause the
+iteration to miss some of those bits.</p>
+<p>The concurrent resetting of bits is OK.</p>
+<dl class="function">
+<dt id="c.hbitmap_iter_next">
+int64_t <code class="descname">hbitmap_iter_next</code><span class="sig-paren">(</span>HBitmapIter *<em>&nbsp;hbi</em><span class="sig-paren">)</span><a class="headerlink" href="#c.hbitmap_iter_next" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">HBitmapIter</span> <span class="pre">*</span> <span class="pre">hbi</span></code></dt>
+<dd>HBitmapIter to operate on.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Return the next bit that is set in <strong>hbi</strong>&#8216;s associated HBitmap,
+or -1 if all remaining bits are zero.</p>
+<dl class="function">
+<dt id="c.hbitmap_iter_next_word">
+size_t <code class="descname">hbitmap_iter_next_word</code><span class="sig-paren">(</span>HBitmapIter *<em>&nbsp;hbi</em>, unsigned long *<em>&nbsp;p_cur</em><span class="sig-paren">)</span><a class="headerlink" href="#c.hbitmap_iter_next_word" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">HBitmapIter</span> <span class="pre">*</span> <span class="pre">hbi</span></code></dt>
+<dd>HBitmapIter to operate on.</dd>
+<dt><code class="docutils literal"><span class="pre">unsigned</span> <span class="pre">long</span> <span class="pre">*</span> <span class="pre">p_cur</span></code></dt>
+<dd>Location where to store the next non-zero word.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Return the index of the next nonzero word that is set in <strong>hbi</strong>&#8216;s
+associated HBitmap, and set <a href="#id1"><span class="problematic" id="id2">*</span></a>p_cur to the content of that word
+(bits before the index that was passed to hbitmap_iter_init are
+trimmed on the first call).  Return -1, and set <a href="#id3"><span class="problematic" id="id4">*</span></a>p_cur to zero,
+if all remaining words are zero.</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">QEMU</a></h1>
+
+
+
+<p class="blurb">Developers Guide</p>
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=&repo=&type=watch&count=true&size=large"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../decodetree.html">Decodetree Specification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../kconfig.html">QEMU and Kconfig</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../loads-stores.html">Load and Store APIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../memory.html">The memory API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../migration.html">Migration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../qapi.html">QAPI headers</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../qemu.html">QEMU headers</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="bitops.html">Bitwise operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="coroutine.html">QEMU coroutine implementation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="atomic128.html">atomic128 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="atomic.html">atomic header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="base64.html">base64 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bcd.html">bcd header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bitmap.html">bitmap header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bswap.html">bswap header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="buffer.html">buffer header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="compiler.html">compiler header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="config-file.html">config-file header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="coroutine_int.html">coroutine_int header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cpuid.html">cpuid header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="crc32c.html">crc32c header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ctype.html">ctype header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cutils.html">cutils header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="drm.html">drm header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="envlist.html">envlist header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="error-report.html">error-report header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="event_notifier.html">event_notifier header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fifo32.html">fifo32 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fifo8.html">fifo8 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="filemonitor.html">filemonitor header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="futex.html">futex header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guest-random.html">guest-random header</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="">hbitmap header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="help_option.html">help_option header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="host-utils.html">host-utils header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="id.html">id header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="int128.html">int128 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="iova-tree.html">iova-tree header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="iov.html">iov header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jhash.html">jhash header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="job.html">job header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="lockable.html">lockable header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="log-for-trace.html">log-for-trace header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="log.html">log header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="main-loop.html">main-loop header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="memfd.html">memfd header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mmap-alloc.html">mmap-alloc header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="module.html">module header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notify.html">notify header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="option.html">option header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="option_int.html">option_int header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="osdep.html">osdep header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="path.html">path header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pmem.html">pmem header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="processor.html">processor header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qdist.html">qdist header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qemu-print.html">qemu-print header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qht.html">qht header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qsp.html">qsp header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="queue.html">queue header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="range.html">range header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ratelimit.html">ratelimit header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rcu.html">rcu header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rcu_queue.html">rcu_queue header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="readline.html">readline header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="seqlock.html">seqlock header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sockets.html">sockets header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stats64.html">stats64 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sys_membarrier.html">sys_membarrier header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="systemd.html">systemd header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="thread.html">thread header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="thread-posix.html">thread-posix header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="thread-win32.html">thread-win32 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="throttle.html">throttle header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="throttle-options.html">throttle-options header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="timed-average.html">timed-average header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="timer.html">timer header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="typedefs.html">typedefs header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unicode.html">unicode header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="units.html">units header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="uri.html">uri header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="uuid.html">uuid header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="vfio-helpers.html">vfio-helpers header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="win_dump_defs.html">win_dump_defs header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="xattr.html">xattr header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="xxhash.html">xxhash header</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../qom.html">QOM headers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../stable-process.html">QEMU and the stable process</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../secure-coding-practices.html">Secure Coding Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tcg.html">Translator Internals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testing.html">Testing in QEMU</a></li>
+</ul>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, The QEMU Project Developers.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

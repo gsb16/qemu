@@ -1,0 +1,477 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>qht header &mdash; QEMU 4.1.50 (v4.0.0-470-g250533e6-dirty) documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '4.1.50 (v4.0.0-470-g250533e6-dirty)',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  false
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="QEMU 4.1.50 (v4.0.0-470-g250533e6-dirty) documentation" href="../index.html" />
+    <link rel="up" title="QEMU headers" href="../qemu.html" />
+    <link rel="next" title="qsp header" href="qsp.html" />
+    <link rel="prev" title="qemu-print header" href="qemu-print.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="qht-header">
+<h1>qht header<a class="headerlink" href="#qht-header" title="Permalink to this headline">¶</a></h1>
+<p>The documentation of QEMU&#8217;s <code class="docutils literal"><span class="pre">qemu/qht.h</span></code> header.</p>
+<dl class="type">
+<dt id="c.qht_stats">
+struct <code class="descname">qht_stats</code><a class="headerlink" href="#c.qht_stats" title="Permalink to this definition">¶</a></dt>
+<dd><p>Statistics of a QHT</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-python"><div class="highlight"><pre>struct qht_stats {
+  size_t head_buckets;
+  size_t used_head_buckets;
+  size_t entries;
+  struct qdist chain;
+  struct qdist occupancy;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">head_buckets</span></code></dt>
+<dd>number of head buckets</dd>
+<dt><code class="docutils literal"><span class="pre">used_head_buckets</span></code></dt>
+<dd>number of non-empty head buckets</dd>
+<dt><code class="docutils literal"><span class="pre">entries</span></code></dt>
+<dd>total number of entries</dd>
+<dt><code class="docutils literal"><span class="pre">chain</span></code></dt>
+<dd>frequency distribution representing the number of buckets in each
+chain, excluding empty chains.</dd>
+<dt><code class="docutils literal"><span class="pre">occupancy</span></code></dt>
+<dd>frequency distribution representing chain occupancy rate.
+Valid range: from 0.0 (empty) to 1.0 (full occupancy).</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>An entry is a pointer-hash pair.
+Each bucket can host several entries.
+Chains are chains of buckets, whose first link is always a head bucket.</p>
+<dl class="function">
+<dt id="c.qht_init">
+void <code class="descname">qht_init</code><span class="sig-paren">(</span>struct qht *<em>&nbsp;ht</em>, qht_cmp_func_t<em>&nbsp;cmp</em>, size_t<em>&nbsp;n_elems</em>, unsigned int<em>&nbsp;mode</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qht_init" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize a QHT</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">qht</span> <span class="pre">*</span> <span class="pre">ht</span></code></dt>
+<dd>QHT to be initialized</dd>
+<dt><code class="docutils literal"><span class="pre">qht_cmp_func_t</span> <span class="pre">cmp</span></code></dt>
+<dd>default comparison function. Cannot be NULL.</dd>
+<dt><code class="docutils literal"><span class="pre">size_t</span> <span class="pre">n_elems</span></code></dt>
+<dd>number of entries the hash table should be optimized for.</dd>
+<dt><code class="docutils literal"><span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">mode</span></code></dt>
+<dd>bitmask with OR&#8217;ed QHT_MODE_*</dd>
+</dl>
+<dl class="function">
+<dt id="c.qht_destroy">
+void <code class="descname">qht_destroy</code><span class="sig-paren">(</span>struct qht *<em>&nbsp;ht</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qht_destroy" title="Permalink to this definition">¶</a></dt>
+<dd><p>destroy a previously initialized QHT</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">qht</span> <span class="pre">*</span> <span class="pre">ht</span></code></dt>
+<dd>QHT to be destroyed</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Call only when there are no readers/writers left.</p>
+<dl class="function">
+<dt id="c.qht_insert">
+<a class="reference internal" href="../qom/object_interfaces.html#c.bool" title="bool">bool</a> <code class="descname">qht_insert</code><span class="sig-paren">(</span>struct qht *<em>&nbsp;ht</em>, void *<em>&nbsp;p</em>, uint32_t<em>&nbsp;hash</em>, void **<em>&nbsp;existing</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qht_insert" title="Permalink to this definition">¶</a></dt>
+<dd><p>Insert a pointer into the hash table</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">qht</span> <span class="pre">*</span> <span class="pre">ht</span></code></dt>
+<dd>QHT to insert to</dd>
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">p</span></code></dt>
+<dd>pointer to be inserted</dd>
+<dt><code class="docutils literal"><span class="pre">uint32_t</span> <span class="pre">hash</span></code></dt>
+<dd>hash corresponding to <strong>p</strong></dd>
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">**</span> <span class="pre">existing</span></code></dt>
+<dd>address where the pointer to an existing entry can be copied to</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Attempting to insert a NULL <strong>p</strong> is a bug.
+Inserting the same pointer <strong>p</strong> with different <strong>hash</strong> values is a bug.</p>
+<p>In case of successful operation, smp_wmb() is implied before the pointer is
+inserted into the hash table.</p>
+<p>Returns true on success.
+Returns false if there is an existing entry in the table that is equivalent
+(i.e. ht-&gt;cmp matches and the hash is the same) to <strong>p</strong>-<strong>h</strong>. If <strong>existing</strong>
+is !NULL, a pointer to this existing entry is copied to it.</p>
+<dl class="function">
+<dt id="c.qht_lookup_custom">
+void * <code class="descname">qht_lookup_custom</code><span class="sig-paren">(</span>const struct qht *<em>&nbsp;ht</em>, const void *<em>&nbsp;userp</em>, uint32_t<em>&nbsp;hash</em>, qht_lookup_func_t<em>&nbsp;func</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qht_lookup_custom" title="Permalink to this definition">¶</a></dt>
+<dd><p>Look up a pointer using a custom comparison function.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">struct</span> <span class="pre">qht</span> <span class="pre">*</span> <span class="pre">ht</span></code></dt>
+<dd>QHT to be looked up</dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">void</span> <span class="pre">*</span> <span class="pre">userp</span></code></dt>
+<dd>pointer to pass to <strong>func</strong></dd>
+<dt><code class="docutils literal"><span class="pre">uint32_t</span> <span class="pre">hash</span></code></dt>
+<dd>hash of the pointer to be looked up</dd>
+<dt><code class="docutils literal"><span class="pre">qht_lookup_func_t</span> <span class="pre">func</span></code></dt>
+<dd>function to compare existing pointers against <strong>userp</strong></dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Needs to be called under an RCU read-critical section.</p>
+<p>smp_read_barrier_depends() is implied before the call to <strong>func</strong>.</p>
+<p>The user-provided <strong>func</strong> compares pointers in QHT against <strong>userp</strong>.
+If the function returns true, a match has been found.</p>
+<p>Returns the corresponding pointer when a match is found.
+Returns NULL otherwise.</p>
+<dl class="function">
+<dt id="c.qht_lookup">
+void * <code class="descname">qht_lookup</code><span class="sig-paren">(</span>const struct qht *<em>&nbsp;ht</em>, const void *<em>&nbsp;userp</em>, uint32_t<em>&nbsp;hash</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qht_lookup" title="Permalink to this definition">¶</a></dt>
+<dd><p>Look up a pointer in a QHT</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">struct</span> <span class="pre">qht</span> <span class="pre">*</span> <span class="pre">ht</span></code></dt>
+<dd>QHT to be looked up</dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">void</span> <span class="pre">*</span> <span class="pre">userp</span></code></dt>
+<dd>pointer to pass to the comparison function</dd>
+<dt><code class="docutils literal"><span class="pre">uint32_t</span> <span class="pre">hash</span></code></dt>
+<dd>hash of the pointer to be looked up</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Calls qht_lookup_custom() using <strong>ht</strong>&#8216;s default comparison function.</p>
+<dl class="function">
+<dt id="c.qht_remove">
+<a class="reference internal" href="../qom/object_interfaces.html#c.bool" title="bool">bool</a> <code class="descname">qht_remove</code><span class="sig-paren">(</span>struct qht *<em>&nbsp;ht</em>, const void *<em>&nbsp;p</em>, uint32_t<em>&nbsp;hash</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qht_remove" title="Permalink to this definition">¶</a></dt>
+<dd><p>remove a pointer from the hash table</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">qht</span> <span class="pre">*</span> <span class="pre">ht</span></code></dt>
+<dd>QHT to remove from</dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">void</span> <span class="pre">*</span> <span class="pre">p</span></code></dt>
+<dd>pointer to be removed</dd>
+<dt><code class="docutils literal"><span class="pre">uint32_t</span> <span class="pre">hash</span></code></dt>
+<dd>hash corresponding to <strong>p</strong></dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Attempting to remove a NULL <strong>p</strong> is a bug.</p>
+<p>Just-removed <strong>p</strong> pointers cannot be immediately freed; they need to remain
+valid until the end of the RCU grace period in which qht_remove() is called.
+This guarantees that concurrent lookups will always compare against valid
+data.</p>
+<p>Returns true on success.
+Returns false if the <strong>p</strong>-<strong>hash</strong> pair was not found.</p>
+<dl class="function">
+<dt id="c.qht_reset">
+void <code class="descname">qht_reset</code><span class="sig-paren">(</span>struct qht *<em>&nbsp;ht</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qht_reset" title="Permalink to this definition">¶</a></dt>
+<dd><p>reset a QHT</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">qht</span> <span class="pre">*</span> <span class="pre">ht</span></code></dt>
+<dd>QHT to be reset</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>All entries in the hash table are reset. No resizing is performed.</p>
+<p>If concurrent readers may exist, the objects pointed to by the hash table
+must remain valid for the existing RCU grace period &#8211; see qht_remove().
+See also: qht_reset_size()</p>
+<dl class="function">
+<dt id="c.qht_reset_size">
+<a class="reference internal" href="../qom/object_interfaces.html#c.bool" title="bool">bool</a> <code class="descname">qht_reset_size</code><span class="sig-paren">(</span>struct qht *<em>&nbsp;ht</em>, size_t<em>&nbsp;n_elems</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qht_reset_size" title="Permalink to this definition">¶</a></dt>
+<dd><p>reset and resize a QHT</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">qht</span> <span class="pre">*</span> <span class="pre">ht</span></code></dt>
+<dd>QHT to be reset and resized</dd>
+<dt><code class="docutils literal"><span class="pre">size_t</span> <span class="pre">n_elems</span></code></dt>
+<dd>number of entries the resized hash table should be optimized for.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Returns true if the resize was necessary and therefore performed.
+Returns false otherwise.</p>
+<p>If concurrent readers may exist, the objects pointed to by the hash table
+must remain valid for the existing RCU grace period &#8211; see qht_remove().
+See also: qht_reset(), qht_resize().</p>
+<dl class="function">
+<dt id="c.qht_resize">
+<a class="reference internal" href="../qom/object_interfaces.html#c.bool" title="bool">bool</a> <code class="descname">qht_resize</code><span class="sig-paren">(</span>struct qht *<em>&nbsp;ht</em>, size_t<em>&nbsp;n_elems</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qht_resize" title="Permalink to this definition">¶</a></dt>
+<dd><p>resize a QHT</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">qht</span> <span class="pre">*</span> <span class="pre">ht</span></code></dt>
+<dd>QHT to be resized</dd>
+<dt><code class="docutils literal"><span class="pre">size_t</span> <span class="pre">n_elems</span></code></dt>
+<dd>number of entries the resized hash table should be optimized for</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Returns true on success.
+Returns false if the resize was not necessary and therefore not performed.
+See also: qht_reset_size().</p>
+<dl class="function">
+<dt id="c.qht_iter">
+void <code class="descname">qht_iter</code><span class="sig-paren">(</span>struct qht *<em>&nbsp;ht</em>, qht_iter_func_t<em>&nbsp;func</em>, void *<em>&nbsp;userp</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qht_iter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Iterate over a QHT</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">qht</span> <span class="pre">*</span> <span class="pre">ht</span></code></dt>
+<dd>QHT to be iterated over</dd>
+<dt><code class="docutils literal"><span class="pre">qht_iter_func_t</span> <span class="pre">func</span></code></dt>
+<dd>function to be called for each entry in QHT</dd>
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">userp</span></code></dt>
+<dd>additional pointer to be passed to <strong>func</strong></dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Each time it is called, user-provided <strong>func</strong> is passed a pointer-hash pair,
+plus <strong>userp</strong>.</p>
+<p><strong>Note</strong></p>
+<p><strong>ht</strong> cannot be accessed from <strong>func</strong>
+See also: qht_iter_remove()</p>
+<dl class="function">
+<dt id="c.qht_iter_remove">
+void <code class="descname">qht_iter_remove</code><span class="sig-paren">(</span>struct qht *<em>&nbsp;ht</em>, qht_iter_bool_func_t<em>&nbsp;func</em>, void *<em>&nbsp;userp</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qht_iter_remove" title="Permalink to this definition">¶</a></dt>
+<dd><p>Iterate over a QHT, optionally removing entries</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">qht</span> <span class="pre">*</span> <span class="pre">ht</span></code></dt>
+<dd>QHT to be iterated over</dd>
+<dt><code class="docutils literal"><span class="pre">qht_iter_bool_func_t</span> <span class="pre">func</span></code></dt>
+<dd>function to be called for each entry in QHT</dd>
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">userp</span></code></dt>
+<dd>additional pointer to be passed to <strong>func</strong></dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Each time it is called, user-provided <strong>func</strong> is passed a pointer-hash pair,
+plus <strong>userp</strong>. If <strong>func</strong> returns true, the pointer-hash pair is removed.</p>
+<p><strong>Note</strong></p>
+<p><strong>ht</strong> cannot be accessed from <strong>func</strong>
+See also: qht_iter()</p>
+<dl class="function">
+<dt id="c.qht_statistics_init">
+void <code class="descname">qht_statistics_init</code><span class="sig-paren">(</span>const struct qht *<em>&nbsp;ht</em>, struct <a class="reference internal" href="#c.qht_stats" title="qht_stats">qht_stats</a> *<em>&nbsp;stats</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qht_statistics_init" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gather statistics from a QHT</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">struct</span> <span class="pre">qht</span> <span class="pre">*</span> <span class="pre">ht</span></code></dt>
+<dd>QHT to gather statistics from</dd>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">qht_stats</span> <span class="pre">*</span> <span class="pre">stats</span></code></dt>
+<dd>pointer to a <a class="reference internal" href="#c.qht_stats" title="qht_stats"><code class="xref c c-type docutils literal"><span class="pre">struct</span> <span class="pre">qht_stats</span></code></a> to be filled in</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Does NOT need to be called under an RCU read-critical section,
+since it does not dereference any pointers stored in the hash table.</p>
+<p>When done with <strong>stats</strong>, pass the struct to qht_statistics_destroy().
+Failing to do this will leak memory.</p>
+<dl class="function">
+<dt id="c.qht_statistics_destroy">
+void <code class="descname">qht_statistics_destroy</code><span class="sig-paren">(</span>struct <a class="reference internal" href="#c.qht_stats" title="qht_stats">qht_stats</a> *<em>&nbsp;stats</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qht_statistics_destroy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Destroy a <a class="reference internal" href="#c.qht_stats" title="qht_stats"><code class="xref c c-type docutils literal"><span class="pre">struct</span> <span class="pre">qht_stats</span></code></a></p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">qht_stats</span> <span class="pre">*</span> <span class="pre">stats</span></code></dt>
+<dd><a class="reference internal" href="#c.qht_stats" title="qht_stats"><code class="xref c c-type docutils literal"><span class="pre">struct</span> <span class="pre">qht_stats</span></code></a> to be destroyed</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>See also: qht_statistics_init().</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">QEMU</a></h1>
+
+
+
+<p class="blurb">Developers Guide</p>
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=&repo=&type=watch&count=true&size=large"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../decodetree.html">Decodetree Specification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../kconfig.html">QEMU and Kconfig</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../loads-stores.html">Load and Store APIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../memory.html">The memory API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../migration.html">Migration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../qapi.html">QAPI headers</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../qemu.html">QEMU headers</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="bitops.html">Bitwise operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="coroutine.html">QEMU coroutine implementation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="atomic128.html">atomic128 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="atomic.html">atomic header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="base64.html">base64 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bcd.html">bcd header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bitmap.html">bitmap header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bswap.html">bswap header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="buffer.html">buffer header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="compiler.html">compiler header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="config-file.html">config-file header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="coroutine_int.html">coroutine_int header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cpuid.html">cpuid header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="crc32c.html">crc32c header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ctype.html">ctype header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cutils.html">cutils header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="drm.html">drm header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="envlist.html">envlist header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="error-report.html">error-report header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="event_notifier.html">event_notifier header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fifo32.html">fifo32 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fifo8.html">fifo8 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="filemonitor.html">filemonitor header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="futex.html">futex header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guest-random.html">guest-random header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="hbitmap.html">hbitmap header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="help_option.html">help_option header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="host-utils.html">host-utils header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="id.html">id header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="int128.html">int128 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="iova-tree.html">iova-tree header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="iov.html">iov header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jhash.html">jhash header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="job.html">job header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="lockable.html">lockable header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="log-for-trace.html">log-for-trace header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="log.html">log header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="main-loop.html">main-loop header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="memfd.html">memfd header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mmap-alloc.html">mmap-alloc header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="module.html">module header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notify.html">notify header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="option.html">option header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="option_int.html">option_int header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="osdep.html">osdep header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="path.html">path header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pmem.html">pmem header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="processor.html">processor header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qdist.html">qdist header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qemu-print.html">qemu-print header</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="">qht header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qsp.html">qsp header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="queue.html">queue header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="range.html">range header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ratelimit.html">ratelimit header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rcu.html">rcu header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rcu_queue.html">rcu_queue header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="readline.html">readline header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="seqlock.html">seqlock header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sockets.html">sockets header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stats64.html">stats64 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sys_membarrier.html">sys_membarrier header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="systemd.html">systemd header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="thread.html">thread header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="thread-posix.html">thread-posix header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="thread-win32.html">thread-win32 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="throttle.html">throttle header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="throttle-options.html">throttle-options header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="timed-average.html">timed-average header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="timer.html">timer header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="typedefs.html">typedefs header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unicode.html">unicode header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="units.html">units header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="uri.html">uri header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="uuid.html">uuid header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="vfio-helpers.html">vfio-helpers header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="win_dump_defs.html">win_dump_defs header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="xattr.html">xattr header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="xxhash.html">xxhash header</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../qom.html">QOM headers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../stable-process.html">QEMU and the stable process</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../secure-coding-practices.html">Secure Coding Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tcg.html">Translator Internals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testing.html">Testing in QEMU</a></li>
+</ul>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, The QEMU Project Developers.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

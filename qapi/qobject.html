@@ -1,0 +1,218 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>qobject header &mdash; QEMU 4.1.50 (v4.0.0-470-g250533e6-dirty) documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '4.1.50 (v4.0.0-470-g250533e6-dirty)',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  false
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="QEMU 4.1.50 (v4.0.0-470-g250533e6-dirty) documentation" href="../index.html" />
+    <link rel="up" title="QAPI headers" href="../qapi.html" />
+    <link rel="next" title="qstring header" href="qstring.html" />
+    <link rel="prev" title="qnum header" href="qnum.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="qobject-header">
+<h1>qobject header<a class="headerlink" href="#qobject-header" title="Permalink to this headline">¶</a></h1>
+<p>The documentation of QEMU&#8217;s <code class="docutils literal"><span class="pre">qapi/qobject.h</span></code> header.</p>
+<dl class="function">
+<dt id="c.qobject_is_equal">
+<a class="reference internal" href="../qom/object_interfaces.html#c.bool" title="bool">bool</a> <code class="descname">qobject_is_equal</code><span class="sig-paren">(</span>const QObject *<em>&nbsp;x</em>, const QObject *<em>&nbsp;y</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qobject_is_equal" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">QObject</span> <span class="pre">*</span> <span class="pre">x</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">QObject</span> <span class="pre">*</span> <span class="pre">y</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Any of the pointers may be NULL; return true if both are.  Always
+return false if only one is (therefore a QNull object is not
+considered equal to a NULL pointer).</p>
+<dl class="function">
+<dt id="c.qobject_destroy">
+void <code class="descname">qobject_destroy</code><span class="sig-paren">(</span>QObject *<em>&nbsp;obj</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qobject_destroy" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QObject</span> <span class="pre">*</span> <span class="pre">obj</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<dl class="function">
+<dt id="c.qobject_ref">
+<code class="descname">qobject_ref</code><span class="sig-paren">(</span>obj<span class="sig-paren">)</span><a class="headerlink" href="#c.qobject_ref" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">obj</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>the same <strong>obj</strong>. The type of <strong>obj</strong> will be propagated to the
+return type.</p>
+<dl class="function">
+<dt id="c.qobject_unref">
+<code class="descname">qobject_unref</code><span class="sig-paren">(</span>obj<span class="sig-paren">)</span><a class="headerlink" href="#c.qobject_unref" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">obj</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>when it reaches zero</p>
+<dl class="function">
+<dt id="c.qobject_type">
+QType <code class="descname">qobject_type</code><span class="sig-paren">(</span>const QObject *<em>&nbsp;obj</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qobject_type" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">QObject</span> <span class="pre">*</span> <span class="pre">obj</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<dl class="function">
+<dt id="c.qobject_check_type">
+QObject * <code class="descname">qobject_check_type</code><span class="sig-paren">(</span>const QObject *<em>&nbsp;obj</em>, QType<em>&nbsp;type</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qobject_check_type" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">QObject</span> <span class="pre">*</span> <span class="pre">obj</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal"><span class="pre">QType</span> <span class="pre">type</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Return <strong>obj</strong>, but only if <strong>obj</strong> is not NULL and <strong>type</strong> is equal to
+<strong>obj</strong>&#8216;s type.  Return NULL otherwise.</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">QEMU</a></h1>
+
+
+
+<p class="blurb">Developers Guide</p>
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=&repo=&type=watch&count=true&size=large"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../decodetree.html">Decodetree Specification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../kconfig.html">QEMU and Kconfig</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../loads-stores.html">Load and Store APIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../memory.html">The memory API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../migration.html">Migration</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../qapi.html">QAPI headers</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="clone-visitor.html">clone-visitor header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dealloc-visitor.html">dealloc-visitor header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="error.html">error header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="opts-visitor.html">opts-visitor header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qmp-event.html">qmp-event header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="object-input-visitor.html">object-input-visitor header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="object-output-visitor.html">object-output-visitor header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="string-input-visitor.html">string-input-visitor header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="string-output-visitor.html">string-output-visitor header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="util.html">util header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="visitor-impl.html">visitor-impl header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="visitor.html">visitor header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dispatch.html">dispatch header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="json-parser.html">json-parser header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qbool.html">qbool header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qdict.html">qdict header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qerror.html">qerror header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qjson.html">qjson header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qlist.html">qlist header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qlit.html">qlit header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qnull.html">qnull header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qnum.html">qnum header</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="">qobject header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qstring.html">qstring header</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../qemu.html">QEMU headers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../qom.html">QOM headers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../stable-process.html">QEMU and the stable process</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../secure-coding-practices.html">Secure Coding Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tcg.html">Translator Internals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testing.html">Testing in QEMU</a></li>
+</ul>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, The QEMU Project Developers.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

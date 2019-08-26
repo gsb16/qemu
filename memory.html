@@ -1,0 +1,2261 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>The memory API &mdash; QEMU 4.1.50 (v4.0.0-470-g250533e6-dirty) documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '4.1.50 (v4.0.0-470-g250533e6-dirty)',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  false
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="QEMU 4.1.50 (v4.0.0-470-g250533e6-dirty) documentation" href="index.html" />
+    <link rel="next" title="Migration" href="migration.html" />
+    <link rel="prev" title="Load and Store APIs" href="loads-stores.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="the-memory-api">
+<h1>The memory API<a class="headerlink" href="#the-memory-api" title="Permalink to this headline">¶</a></h1>
+<p>The memory API models the memory and I/O buses and controllers of a QEMU
+machine.  It attempts to allow modelling of:</p>
+<ul class="simple">
+<li>ordinary RAM</li>
+<li>memory-mapped I/O (MMIO)</li>
+<li>memory controllers that can dynamically reroute physical memory regions
+to different destinations</li>
+</ul>
+<p>The memory model provides support for</p>
+<ul class="simple">
+<li>tracking RAM changes by the guest</li>
+<li>setting up coalesced memory for kvm</li>
+<li>setting up ioeventfd regions for kvm</li>
+</ul>
+<p>Memory is modelled as an acyclic graph of MemoryRegion objects.  Sinks
+(leaves) are RAM and MMIO regions, while other nodes represent
+buses, memory controllers, and memory regions that have been rerouted.</p>
+<p>In addition to MemoryRegion objects, the memory API provides AddressSpace
+objects for every root and possibly for intermediate MemoryRegions too.
+These represent memory as seen from the CPU or a device&#8217;s viewpoint.</p>
+<div class="section" id="types-of-regions">
+<h2>Types of regions<a class="headerlink" href="#types-of-regions" title="Permalink to this headline">¶</a></h2>
+<p>There are multiple types of memory regions (all represented by a single C type
+MemoryRegion):</p>
+<ul>
+<li><p class="first">RAM: a RAM region is simply a range of host memory that can be made available
+to the guest.
+You typically initialize these with memory_region_init_ram().  Some special
+purposes require the variants memory_region_init_resizeable_ram(),
+memory_region_init_ram_from_file(), or memory_region_init_ram_ptr().</p>
+</li>
+<li><p class="first">MMIO: a range of guest memory that is implemented by host callbacks;
+each read or write causes a callback to be called on the host.
+You initialize these with memory_region_init_io(), passing it a
+MemoryRegionOps structure describing the callbacks.</p>
+</li>
+<li><p class="first">ROM: a ROM memory region works like RAM for reads (directly accessing
+a region of host memory), and forbids writes. You initialize these with
+memory_region_init_rom().</p>
+</li>
+<li><p class="first">ROM device: a ROM device memory region works like RAM for reads
+(directly accessing a region of host memory), but like MMIO for
+writes (invoking a callback).  You initialize these with
+memory_region_init_rom_device().</p>
+</li>
+<li><p class="first">IOMMU region: an IOMMU region translates addresses of accesses made to it
+and forwards them to some other target memory region.  As the name suggests,
+these are only needed for modelling an IOMMU, not for simple devices.
+You initialize these with memory_region_init_iommu().</p>
+</li>
+<li><p class="first">container: a container simply includes other memory regions, each at
+a different offset.  Containers are useful for grouping several regions
+into one unit.  For example, a PCI BAR may be composed of a RAM region
+and an MMIO region.</p>
+<p>A container&#8217;s subregions are usually non-overlapping.  In some cases it is
+useful to have overlapping regions; for example a memory controller that
+can overlay a subregion of RAM with MMIO or ROM, or a PCI controller
+that does not prevent card from claiming overlapping BARs.</p>
+<p>You initialize a pure container with memory_region_init().</p>
+</li>
+<li><p class="first">alias: a subsection of another region.  Aliases allow a region to be
+split apart into discontiguous regions.  Examples of uses are memory banks
+used when the guest address space is smaller than the amount of RAM
+addressed, or a memory controller that splits main memory to expose a &#8220;PCI
+hole&#8221;.  Aliases may point to any type of region, including other aliases,
+but an alias may not point back to itself, directly or indirectly.
+You initialize these with memory_region_init_alias().</p>
+</li>
+<li><p class="first">reservation region: a reservation region is primarily for debugging.
+It claims I/O space that is not supposed to be handled by QEMU itself.
+The typical use is to track parts of the address space which will be
+handled by the host kernel when KVM is enabled.  You initialize these
+by passing a NULL callback parameter to memory_region_init_io().</p>
+</li>
+</ul>
+<p>It is valid to add subregions to a region which is not a pure container
+(that is, to an MMIO, RAM or ROM region). This means that the region
+will act like a container, except that any addresses within the container&#8217;s
+region which are not claimed by any subregion are handled by the
+container itself (ie by its MMIO callbacks or RAM backing). However
+it is generally possible to achieve the same effect with a pure container
+one of whose subregions is a low priority &#8220;background&#8221; region covering
+the whole address range; this is often clearer and is preferred.
+Subregions cannot be added to an alias region.</p>
+</div>
+<div class="section" id="migration">
+<h2>Migration<a class="headerlink" href="#migration" title="Permalink to this headline">¶</a></h2>
+<p>Where the memory region is backed by host memory (RAM, ROM and
+ROM device memory region types), this host memory needs to be
+copied to the destination on migration. These APIs which allocate
+the host memory for you will also register the memory so it is
+migrated:</p>
+<ul class="simple">
+<li>memory_region_init_ram()</li>
+<li>memory_region_init_rom()</li>
+<li>memory_region_init_rom_device()</li>
+</ul>
+<p>For most devices and boards this is the correct thing. If you
+have a special case where you need to manage the migration of
+the backing memory yourself, you can call the functions:</p>
+<ul class="simple">
+<li>memory_region_init_ram_nomigrate()</li>
+<li>memory_region_init_rom_nomigrate()</li>
+<li>memory_region_init_rom_device_nomigrate()</li>
+</ul>
+<p>which only initialize the MemoryRegion and leave handling
+migration to the caller.</p>
+<p>The functions:</p>
+<ul class="simple">
+<li>memory_region_init_resizeable_ram()</li>
+<li>memory_region_init_ram_from_file()</li>
+<li>memory_region_init_ram_from_fd()</li>
+<li>memory_region_init_ram_ptr()</li>
+<li>memory_region_init_ram_device_ptr()</li>
+</ul>
+<p>are for special cases only, and so they do not automatically
+register the backing memory for migration; the caller must
+manage migration if necessary.</p>
+</div>
+<div class="section" id="region-names">
+<h2>Region names<a class="headerlink" href="#region-names" title="Permalink to this headline">¶</a></h2>
+<p>Regions are assigned names by the constructor.  For most regions these are
+only used for debugging purposes, but RAM regions also use the name to identify
+live migration sections.  This means that RAM region names need to have ABI
+stability.</p>
+</div>
+<div class="section" id="region-lifecycle">
+<h2>Region lifecycle<a class="headerlink" href="#region-lifecycle" title="Permalink to this headline">¶</a></h2>
+<p>A region is created by one of the memory_region_init*() functions and
+attached to an object, which acts as its owner or parent.  QEMU ensures
+that the owner object remains alive as long as the region is visible to
+the guest, or as long as the region is in use by a virtual CPU or another
+device.  For example, the owner object will not die between an
+address_space_map operation and the corresponding address_space_unmap.</p>
+<p>After creation, a region can be added to an address space or a
+container with memory_region_add_subregion(), and removed using
+memory_region_del_subregion().</p>
+<p>Various region attributes (read-only, dirty logging, coalesced mmio,
+ioeventfd) can be changed during the region lifecycle.  They take effect
+as soon as the region is made visible.  This can be immediately, later,
+or never.</p>
+<p>Destruction of a memory region happens automatically when the owner
+object dies.</p>
+<p>If however the memory region is part of a dynamically allocated data
+structure, you should call object_unparent() to destroy the memory region
+before the data structure is freed.  For an example see VFIOMSIXInfo
+and VFIOQuirk in hw/vfio/pci.c.</p>
+<p>You must not destroy a memory region as long as it may be in use by a
+device or CPU.  In order to do this, as a general rule do not create or
+destroy memory regions dynamically during a device&#8217;s lifetime, and only
+call object_unparent() in the memory region owner&#8217;s instance_finalize
+callback.  The dynamically allocated data structure that contains the
+memory region then should obviously be freed in the instance_finalize
+callback as well.</p>
+<p>If you break this rule, the following situation can happen:</p>
+<ul class="simple">
+<li>the memory region&#8217;s owner had a reference taken via memory_region_ref
+(for example by address_space_map)</li>
+<li>the region is unparented, and has no owner anymore</li>
+<li>when address_space_unmap is called, the reference to the memory region&#8217;s
+owner is leaked.</li>
+</ul>
+<p>There is an exception to the above rule: it is okay to call
+object_unparent at any time for an alias or a container region.  It is
+therefore also okay to create or destroy alias and container regions
+dynamically during a device&#8217;s lifetime.</p>
+<p>This exceptional usage is valid because aliases and containers only help
+QEMU building the guest&#8217;s memory map; they are never accessed directly.
+memory_region_ref and memory_region_unref are never called on aliases
+or containers, and the above situation then cannot happen.  Exploiting
+this exception is rarely necessary, and therefore it is discouraged,
+but nevertheless it is used in a few places.</p>
+<p>For regions that &#8220;have no owner&#8221; (NULL is passed at creation time), the
+machine object is actually used as the owner.  Since instance_finalize is
+never called for the machine object, you must never call object_unparent
+on regions that have no owner, unless they are aliases or containers.</p>
+</div>
+<div class="section" id="overlapping-regions-and-priority">
+<h2>Overlapping regions and priority<a class="headerlink" href="#overlapping-regions-and-priority" title="Permalink to this headline">¶</a></h2>
+<p>Usually, regions may not overlap each other; a memory address decodes into
+exactly one target.  In some cases it is useful to allow regions to overlap,
+and sometimes to control which of an overlapping regions is visible to the
+guest.  This is done with memory_region_add_subregion_overlap(), which
+allows the region to overlap any other region in the same container, and
+specifies a priority that allows the core to decide which of two regions at
+the same address are visible (highest wins).
+Priority values are signed, and the default value is zero. This means that
+you can use memory_region_add_subregion_overlap() both to specify a region
+that must sit &#8216;above&#8217; any others (with a positive priority) and also a
+background region that sits &#8216;below&#8217; others (with a negative priority).</p>
+<p>If the higher priority region in an overlap is a container or alias, then
+the lower priority region will appear in any &#8220;holes&#8221; that the higher priority
+region has left by not mapping subregions to that area of its address range.
+(This applies recursively &#8211; if the subregions are themselves containers or
+aliases that leave holes then the lower priority region will appear in these
+holes too.)</p>
+<p>For example, suppose we have a container A of size 0x8000 with two subregions
+B and C. B is a container mapped at 0x2000, size 0x4000, priority 2; C is
+an MMIO region mapped at 0x0, size 0x6000, priority 1. B currently has two
+of its own subregions: D of size 0x1000 at offset 0 and E of size 0x1000 at
+offset 0x2000. As a diagram:</p>
+<div class="highlight-python"><div class="highlight"><pre>      0      1000   2000   3000   4000   5000   6000   7000   8000
+      |------|------|------|------|------|------|------|------|
+A:    [                                                      ]
+C:    [CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC]
+B:                  [                          ]
+D:                  [DDDDD]
+E:                                [EEEEE]
+</pre></div>
+</div>
+<p>The regions that will be seen within this address range then are:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="p">[</span><span class="n">CCCCCCCCCCCC</span><span class="p">][</span><span class="n">DDDDD</span><span class="p">][</span><span class="n">CCCCC</span><span class="p">][</span><span class="n">EEEEE</span><span class="p">][</span><span class="n">CCCCC</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Since B has higher priority than C, its subregions appear in the flat map
+even where they overlap with C. In ranges where B has not mapped anything
+C&#8217;s region appears.</p>
+<p>If B had provided its own MMIO operations (ie it was not a pure container)
+then these would be used for any addresses in its range not handled by
+D or E, and the result would be:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="p">[</span><span class="n">CCCCCCCCCCCC</span><span class="p">][</span><span class="n">DDDDD</span><span class="p">][</span><span class="n">BBBBB</span><span class="p">][</span><span class="n">EEEEE</span><span class="p">][</span><span class="n">BBBBB</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Priority values are local to a container, because the priorities of two
+regions are only compared when they are both children of the same container.
+This means that the device in charge of the container (typically modelling
+a bus or a memory controller) can use them to manage the interaction of
+its child regions without any side effects on other parts of the system.
+In the example above, the priorities of D and E are unimportant because
+they do not overlap each other. It is the relative priority of B and C
+that causes D and E to appear on top of C: D and E&#8217;s priorities are never
+compared against the priority of C.</p>
+</div>
+<div class="section" id="visibility">
+<h2>Visibility<a class="headerlink" href="#visibility" title="Permalink to this headline">¶</a></h2>
+<p>The memory core uses the following rules to select a memory region when the
+guest accesses an address:</p>
+<ul class="simple">
+<li>all direct subregions of the root region are matched against the address, in
+descending priority order<ul>
+<li>if the address lies outside the region offset/size, the subregion is
+discarded</li>
+<li>if the subregion is a leaf (RAM or MMIO), the search terminates, returning
+this leaf region</li>
+<li>if the subregion is a container, the same algorithm is used within the
+subregion (after the address is adjusted by the subregion offset)</li>
+<li>if the subregion is an alias, the search is continued at the alias target
+(after the address is adjusted by the subregion offset and alias offset)</li>
+<li>if a recursive search within a container or alias subregion does not
+find a match (because of a &#8220;hole&#8221; in the container&#8217;s coverage of its
+address range), then if this is a container with its own MMIO or RAM
+backing the search terminates, returning the container itself. Otherwise
+we continue with the next subregion in priority order</li>
+</ul>
+</li>
+<li>if none of the subregions match the address then the search terminates
+with no match found</li>
+</ul>
+</div>
+<div class="section" id="example-memory-map">
+<h2>Example memory map<a class="headerlink" href="#example-memory-map" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-python"><div class="highlight"><pre>system_memory: container@0-2^48-1
+ |
+ +---- lomem: alias@0-0xdfffffff ---&gt; #ram (0-0xdfffffff)
+ |
+ +---- himem: alias@0x100000000-0x11fffffff ---&gt; #ram (0xe0000000-0xffffffff)
+ |
+ +---- vga-window: alias@0xa0000-0xbffff ---&gt; #pci (0xa0000-0xbffff)
+ |      (prio 1)
+ |
+ +---- pci-hole: alias@0xe0000000-0xffffffff ---&gt; #pci (0xe0000000-0xffffffff)
+
+pci (0-2^32-1)
+ |
+ +--- vga-area: container@0xa0000-0xbffff
+ |      |
+ |      +--- alias@0x00000-0x7fff  ---&gt; #vram (0x010000-0x017fff)
+ |      |
+ |      +--- alias@0x08000-0xffff  ---&gt; #vram (0x020000-0x027fff)
+ |
+ +---- vram: ram@0xe1000000-0xe1ffffff
+ |
+ +---- vga-mmio: mmio@0xe2000000-0xe200ffff
+
+ram: ram@0x00000000-0xffffffff
+</pre></div>
+</div>
+<p>This is a (simplified) PC memory map. The 4GB RAM block is mapped into the
+system address space via two aliases: &#8220;lomem&#8221; is a 1:1 mapping of the first
+3.5GB; &#8220;himem&#8221; maps the last 0.5GB at address 4GB.  This leaves 0.5GB for the
+so-called PCI hole, that allows a 32-bit PCI bus to exist in a system with
+4GB of memory.</p>
+<p>The memory controller diverts addresses in the range 640K-768K to the PCI
+address space.  This is modelled using the &#8220;vga-window&#8221; alias, mapped at a
+higher priority so it obscures the RAM at the same addresses.  The vga window
+can be removed by programming the memory controller; this is modelled by
+removing the alias and exposing the RAM underneath.</p>
+<p>The pci address space is not a direct child of the system address space, since
+we only want parts of it to be visible (we accomplish this using aliases).
+It has two subregions: vga-area models the legacy vga window and is occupied
+by two 32K memory banks pointing at two sections of the framebuffer.
+In addition the vram is mapped as a BAR at address e1000000, and an additional
+BAR containing MMIO registers is mapped after it.</p>
+<p>Note that if the guest maps a BAR outside the PCI hole, it would not be
+visible as the pci-hole alias clips it to a 0.5GB range.</p>
+</div>
+<div class="section" id="mmio-operations">
+<h2>MMIO Operations<a class="headerlink" href="#mmio-operations" title="Permalink to this headline">¶</a></h2>
+<p>MMIO regions are provided with -&gt;read() and -&gt;write() callbacks,
+which are sufficient for most devices. Some devices change behaviour
+based on the attributes used for the memory transaction, or need
+to be able to respond that the access should provoke a bus error
+rather than completing successfully; those devices can use the
+-&gt;read_with_attrs() and -&gt;write_with_attrs() callbacks instead.</p>
+<p>In addition various constraints can be supplied to control how these
+callbacks are called:</p>
+<ul class="simple">
+<li>.valid.min_access_size, .valid.max_access_size define the access sizes
+(in bytes) which the device accepts; accesses outside this range will
+have device and bus specific behaviour (ignored, or machine check)</li>
+<li>.valid.unaligned specifies that the <em>device being modelled</em> supports
+unaligned accesses; if false, unaligned accesses will invoke the
+appropriate bus or CPU specific behaviour.</li>
+<li>.impl.min_access_size, .impl.max_access_size define the access sizes
+(in bytes) supported by the <em>implementation</em>; other access sizes will be
+emulated using the ones available.  For example a 4-byte write will be
+emulated using four 1-byte writes, if .impl.max_access_size = 1.</li>
+<li>.impl.unaligned specifies that the <em>implementation</em> supports unaligned
+accesses; if false, unaligned accesses will be emulated by two aligned
+accesses.</li>
+</ul>
+</div>
+<div class="section" id="detailed-api-documentation">
+<h2>Detailed API documentation<a class="headerlink" href="#detailed-api-documentation" title="Permalink to this headline">¶</a></h2>
+<dl class="type">
+<dt id="c.IOMMUMemoryRegionClass">
+struct <code class="descname">IOMMUMemoryRegionClass</code><a class="headerlink" href="#c.IOMMUMemoryRegionClass" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-python"><div class="highlight"><pre>struct IOMMUMemoryRegionClass {
+  MemoryRegionClass parent_class;
+  IOMMUTLBEntry (*translate)(IOMMUMemoryRegion *iommu, hwaddr addr, IOMMUAccessFlags flag, int iommu_idx);
+  uint64_t (*get_min_page_size)(IOMMUMemoryRegion *iommu);
+  void (*notify_flag_changed)(IOMMUMemoryRegion *iommu,IOMMUNotifierFlag old_flags, IOMMUNotifierFlag new_flags);
+  void (*replay)(IOMMUMemoryRegion *iommu, IOMMUNotifier *notifier);
+  int (*get_attr)(IOMMUMemoryRegion *iommu, enum IOMMUMemoryRegionAttr attr, void *data);
+  int (*attrs_to_index)(IOMMUMemoryRegion *iommu, MemTxAttrs attrs);
+  int (*num_indexes)(IOMMUMemoryRegion *iommu);
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<p><strong>Description</strong></p>
+<p>All IOMMU implementations need to subclass TYPE_IOMMU_MEMORY_REGION
+and provide an implementation of at least the <strong>translate</strong> method here
+to handle requests to the memory region. Other methods are optional.</p>
+<p>The IOMMU implementation must use the IOMMU notifier infrastructure
+to report whenever mappings are changed, by calling
+memory_region_notify_iommu() (or, if necessary, by calling
+memory_region_notify_one() for each registered notifier).</p>
+<p>Conceptually an IOMMU provides a mapping from input address
+to an output TLB entry. If the IOMMU is aware of memory transaction
+attributes and the output TLB entry depends on the transaction
+attributes, we represent this using IOMMU indexes. Each index
+selects a particular translation table that the IOMMU has:</p>
+<ul class="simple">
+<li><strong>attrs_to_index</strong> returns the IOMMU index for a set of transaction attributes</li>
+<li><strong>translate</strong> takes an input address and an IOMMU index</li>
+</ul>
+<p>and the mapping returned can only depend on the input address and the
+IOMMU index.</p>
+<p>Most IOMMUs don&#8217;t care about the transaction attributes and support
+only a single IOMMU index. A more complex IOMMU might have one index
+for secure transactions and one for non-secure transactions.</p>
+<dl class="type">
+<dt id="c.MemoryListener">
+struct <code class="descname">MemoryListener</code><a class="headerlink" href="#c.MemoryListener" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-python"><div class="highlight"><pre>struct MemoryListener {
+  void (*begin)(MemoryListener *listener);
+  void (*commit)(MemoryListener *listener);
+  void (*region_add)(MemoryListener *listener, MemoryRegionSection *section);
+  void (*region_del)(MemoryListener *listener, MemoryRegionSection *section);
+  void (*region_nop)(MemoryListener *listener, MemoryRegionSection *section);
+  void (*log_start)(MemoryListener *listener, MemoryRegionSection *section, int old, int new);
+  void (*log_stop)(MemoryListener *listener, MemoryRegionSection *section, int old, int new);
+  void (*log_sync)(MemoryListener *listener, MemoryRegionSection *section);
+  void (*log_clear)(MemoryListener *listener, MemoryRegionSection *section);
+  void (*log_global_start)(MemoryListener *listener);
+  void (*log_global_stop)(MemoryListener *listener);
+  void (*log_global_after_sync)(MemoryListener *listener);
+  void (*eventfd_add)(MemoryListener *listener, MemoryRegionSection *section, bool match_data, uint64_t data, EventNotifier *e);
+  void (*eventfd_del)(MemoryListener *listener, MemoryRegionSection *section, bool match_data, uint64_t data, EventNotifier *e);
+  void (*coalesced_io_add)(MemoryListener *listener, MemoryRegionSection *section, hwaddr addr, hwaddr len);
+  void (*coalesced_io_del)(MemoryListener *listener, MemoryRegionSection *section, hwaddr addr, hwaddr len);
+  unsigned priority;
+  AddressSpace *address_space;
+  QTAILQ_ENTRY(MemoryListener) link;
+  QTAILQ_ENTRY(MemoryListener) link_as;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<p><strong>Description</strong></p>
+<p>Allows a component to adjust to changes in the guest-visible memory map.
+Use with memory_listener_register() and memory_listener_unregister().</p>
+<dl class="type">
+<dt id="c.AddressSpace">
+struct <code class="descname">AddressSpace</code><a class="headerlink" href="#c.AddressSpace" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-python"><div class="highlight"><pre>struct AddressSpace {
+  struct rcu_head rcu;
+  char *name;
+  MemoryRegion *root;
+  struct FlatView *current_map;
+  int ioeventfd_nb;
+  struct MemoryRegionIoeventfd *ioeventfds;
+  QTAILQ_HEAD(, MemoryListener) listeners;
+  QTAILQ_ENTRY(AddressSpace) address_spaces_link;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="type">
+<dt id="c.MemoryRegionSection">
+struct <code class="descname">MemoryRegionSection</code><a class="headerlink" href="#c.MemoryRegionSection" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-python"><div class="highlight"><pre>struct MemoryRegionSection {
+  MemoryRegion *mr;
+  FlatView *fv;
+  hwaddr offset_within_region;
+  Int128 size;
+  hwaddr offset_within_address_space;
+  bool readonly;
+  bool nonvolatile;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">mr</span></code></dt>
+<dd>the region, or <code class="docutils literal"><span class="pre">NULL</span></code> if empty</dd>
+<dt><code class="docutils literal"><span class="pre">fv</span></code></dt>
+<dd>the flat view of the address space the region is mapped in</dd>
+<dt><code class="docutils literal"><span class="pre">offset_within_region</span></code></dt>
+<dd>the beginning of the section, relative to <strong>mr</strong>&#8216;s start</dd>
+<dt><code class="docutils literal"><span class="pre">size</span></code></dt>
+<dd>the size of the section; will not exceed <strong>mr</strong>&#8216;s boundaries</dd>
+<dt><code class="docutils literal"><span class="pre">offset_within_address_space</span></code></dt>
+<dd>the address of the first byte of the section
+relative to the region&#8217;s address space</dd>
+<dt><code class="docutils literal"><span class="pre">readonly</span></code></dt>
+<dd>writes to this section are ignored</dd>
+<dt><code class="docutils literal"><span class="pre">nonvolatile</span></code></dt>
+<dd>this section is non-volatile</dd>
+</dl>
+<dl class="function">
+<dt id="c.memory_region_init">
+void <code class="descname">memory_region_init</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, struct Object *<em>&nbsp;owner</em>, const char *<em>&nbsp;name</em>, uint64_t<em>&nbsp;size</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_init" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the #MemoryRegion to be initialized</dd>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">Object</span> <span class="pre">*</span> <span class="pre">owner</span></code></dt>
+<dd>the object that tracks the region&#8217;s reference count</dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">name</span></code></dt>
+<dd>used for debugging; not visible to the user or ABI</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">size</span></code></dt>
+<dd>size of the region; any subregions beyond this size will be clipped</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>The region typically acts as a container for other memory regions.  Use
+memory_region_add_subregion() to add subregions.</p>
+<dl class="function">
+<dt id="c.memory_region_ref">
+void <code class="descname">memory_region_ref</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_ref" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the #MemoryRegion</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Whenever memory regions are accessed outside the BQL, they need to be
+preserved against hot-unplug.  MemoryRegions actually do not have their
+own reference count; they piggyback on a QOM object, their &#8220;owner&#8221;.
+This function adds a reference to the owner.</p>
+<p>All MemoryRegions must have an owner if they can disappear, even if the
+device they belong to operates exclusively under the BQL.  This is because
+the region could be returned at any time by memory_region_find, and this
+is usually under guest control.</p>
+<dl class="function">
+<dt id="c.memory_region_unref">
+void <code class="descname">memory_region_unref</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_unref" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the #MemoryRegion</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Whenever memory regions are accessed outside the BQL, they need to be
+preserved against hot-unplug.  MemoryRegions actually do not have their
+own reference count; they piggyback on a QOM object, their &#8220;owner&#8221;.
+This function removes a reference to the owner and possibly destroys it.</p>
+<dl class="function">
+<dt id="c.memory_region_init_io">
+void <code class="descname">memory_region_init_io</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, struct Object *<em>&nbsp;owner</em>, const MemoryRegionOps *<em>&nbsp;ops</em>, void *<em>&nbsp;opaque</em>, const char *<em>&nbsp;name</em>, uint64_t<em>&nbsp;size</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_init_io" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the #MemoryRegion to be initialized.</dd>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">Object</span> <span class="pre">*</span> <span class="pre">owner</span></code></dt>
+<dd>the object that tracks the region&#8217;s reference count</dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">MemoryRegionOps</span> <span class="pre">*</span> <span class="pre">ops</span></code></dt>
+<dd>a structure containing read and write callbacks to be used when
+I/O is performed on the region.</dd>
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">opaque</span></code></dt>
+<dd>passed to the read and write callbacks of the <strong>ops</strong> structure.</dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">name</span></code></dt>
+<dd>used for debugging; not visible to the user or ABI</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">size</span></code></dt>
+<dd>size of the region.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Accesses into the region will cause the callbacks in <strong>ops</strong> to be called.
+if <strong>size</strong> is nonzero, subregions will be clipped to <strong>size</strong>.</p>
+<dl class="function">
+<dt id="c.memory_region_init_ram_nomigrate">
+void <code class="descname">memory_region_init_ram_nomigrate</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, struct Object *<em>&nbsp;owner</em>, const char *<em>&nbsp;name</em>, uint64_t<em>&nbsp;size</em>, Error **<em>&nbsp;errp</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_init_ram_nomigrate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the #MemoryRegion to be initialized.</dd>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">Object</span> <span class="pre">*</span> <span class="pre">owner</span></code></dt>
+<dd>the object that tracks the region&#8217;s reference count</dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">name</span></code></dt>
+<dd>Region name, becomes part of RAMBlock name used in migration stream
+must be unique within any device</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">size</span></code></dt>
+<dd>size of the region.</dd>
+<dt><code class="docutils literal"><span class="pre">Error</span> <span class="pre">**</span> <span class="pre">errp</span></code></dt>
+<dd>pointer to Error*, to store an error if it happens.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<blockquote>
+<div>into the region will modify memory
+directly.</div></blockquote>
+<p>Note that this function does not do anything to cause the data in the
+RAM memory region to be migrated; that is the responsibility of the caller.</p>
+<dl class="function">
+<dt id="c.memory_region_init_ram_shared_nomigrate">
+void <code class="descname">memory_region_init_ram_shared_nomigrate</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, struct Object *<em>&nbsp;owner</em>, const char *<em>&nbsp;name</em>, uint64_t<em>&nbsp;size</em>, <a class="reference internal" href="qom/object_interfaces.html#c.bool" title="bool">bool</a><em>&nbsp;share</em>, Error **<em>&nbsp;errp</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_init_ram_shared_nomigrate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the #MemoryRegion to be initialized.</dd>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">Object</span> <span class="pre">*</span> <span class="pre">owner</span></code></dt>
+<dd>the object that tracks the region&#8217;s reference count</dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">name</span></code></dt>
+<dd>Region name, becomes part of RAMBlock name used in migration stream
+must be unique within any device</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">size</span></code></dt>
+<dd>size of the region.</dd>
+<dt><code class="docutils literal"><span class="pre">bool</span> <span class="pre">share</span></code></dt>
+<dd>allow remapping RAM to different addresses</dd>
+<dt><code class="docutils literal"><span class="pre">Error</span> <span class="pre">**</span> <span class="pre">errp</span></code></dt>
+<dd>pointer to Error*, to store an error if it happens.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<blockquote>
+<div>Accesses into the region will
+modify memory directly.</div></blockquote>
+<p>Note that this function is similar to memory_region_init_ram_nomigrate.
+The only difference is part of the RAM region can be remapped.</p>
+<dl class="function">
+<dt id="c.memory_region_init_resizeable_ram">
+void <code class="descname">memory_region_init_resizeable_ram</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, struct Object *<em>&nbsp;owner</em>, const char *<em>&nbsp;name</em>, uint64_t<em>&nbsp;size</em>, uint64_t<em>&nbsp;max_size</em>, void (*resized) (const<em>&nbsp;char*</em>, uint64_t<em>&nbsp;length</em>, void<em>&nbsp;*host</em>, Error **<em>&nbsp;errp</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_init_resizeable_ram" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the #MemoryRegion to be initialized.</dd>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">Object</span> <span class="pre">*</span> <span class="pre">owner</span></code></dt>
+<dd>the object that tracks the region&#8217;s reference count</dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">name</span></code></dt>
+<dd>Region name, becomes part of RAMBlock name used in migration stream
+must be unique within any device</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">size</span></code></dt>
+<dd>used size of the region.</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">max_size</span></code></dt>
+<dd>max size of the region.</dd>
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">(*)(const</span> <span class="pre">char*,</span> <span class="pre">uint64_t</span> <span class="pre">length,</span> <span class="pre">void</span> <span class="pre">*host)</span> <span class="pre">resized</span></code></dt>
+<dd>callback to notify owner about used size change.</dd>
+<dt><code class="docutils literal"><span class="pre">Error</span> <span class="pre">**</span> <span class="pre">errp</span></code></dt>
+<dd>pointer to Error*, to store an error if it happens.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<blockquote>
+<div>RAM.  Accesses into the region will
+modify memory directly.  Only an initial
+portion of this RAM is actually used.
+The used size can change across reboots.</div></blockquote>
+<p>Note that this function does not do anything to cause the data in the
+RAM memory region to be migrated; that is the responsibility of the caller.</p>
+<dl class="function">
+<dt id="c.memory_region_init_ram_from_file">
+void <code class="descname">memory_region_init_ram_from_file</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, struct Object *<em>&nbsp;owner</em>, const char *<em>&nbsp;name</em>, uint64_t<em>&nbsp;size</em>, uint64_t<em>&nbsp;align</em>, uint32_t<em>&nbsp;ram_flags</em>, const char *<em>&nbsp;path</em>, Error **<em>&nbsp;errp</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_init_ram_from_file" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the #MemoryRegion to be initialized.</dd>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">Object</span> <span class="pre">*</span> <span class="pre">owner</span></code></dt>
+<dd>the object that tracks the region&#8217;s reference count</dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">name</span></code></dt>
+<dd>Region name, becomes part of RAMBlock name used in migration stream
+must be unique within any device</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">size</span></code></dt>
+<dd>size of the region.</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">align</span></code></dt>
+<dd>alignment of the region base address; if 0, the default alignment
+(getpagesize()) will be used.</dd>
+<dt><code class="docutils literal"><span class="pre">uint32_t</span> <span class="pre">ram_flags</span></code></dt>
+<dd>Memory region features:
+- RAM_SHARED: memory must be mmaped with the MAP_SHARED flag
+- RAM_PMEM: the memory is persistent memory
+Other bits are ignored now.</dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">path</span></code></dt>
+<dd>the path in which to allocate the RAM.</dd>
+<dt><code class="docutils literal"><span class="pre">Error</span> <span class="pre">**</span> <span class="pre">errp</span></code></dt>
+<dd>pointer to Error*, to store an error if it happens.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<blockquote>
+<div>mmap-ed backend.</div></blockquote>
+<p>Note that this function does not do anything to cause the data in the
+RAM memory region to be migrated; that is the responsibility of the caller.</p>
+<dl class="function">
+<dt id="c.memory_region_init_ram_from_fd">
+void <code class="descname">memory_region_init_ram_from_fd</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, struct Object *<em>&nbsp;owner</em>, const char *<em>&nbsp;name</em>, uint64_t<em>&nbsp;size</em>, <a class="reference internal" href="qom/object_interfaces.html#c.bool" title="bool">bool</a><em>&nbsp;share</em>, int<em>&nbsp;fd</em>, Error **<em>&nbsp;errp</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_init_ram_from_fd" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the #MemoryRegion to be initialized.</dd>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">Object</span> <span class="pre">*</span> <span class="pre">owner</span></code></dt>
+<dd>the object that tracks the region&#8217;s reference count</dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">name</span></code></dt>
+<dd>the name of the region.</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">size</span></code></dt>
+<dd>size of the region.</dd>
+<dt><code class="docutils literal"><span class="pre">bool</span> <span class="pre">share</span></code></dt>
+<dd><code class="docutils literal"><span class="pre">true</span></code> if memory must be mmaped with the MAP_SHARED flag</dd>
+<dt><code class="docutils literal"><span class="pre">int</span> <span class="pre">fd</span></code></dt>
+<dd>the fd to mmap.</dd>
+<dt><code class="docutils literal"><span class="pre">Error</span> <span class="pre">**</span> <span class="pre">errp</span></code></dt>
+<dd>pointer to Error*, to store an error if it happens.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<blockquote>
+<div>mmap-ed backend.</div></blockquote>
+<p>Note that this function does not do anything to cause the data in the
+RAM memory region to be migrated; that is the responsibility of the caller.</p>
+<dl class="function">
+<dt id="c.memory_region_init_ram_ptr">
+void <code class="descname">memory_region_init_ram_ptr</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, struct Object *<em>&nbsp;owner</em>, const char *<em>&nbsp;name</em>, uint64_t<em>&nbsp;size</em>, void *<em>&nbsp;ptr</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_init_ram_ptr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the #MemoryRegion to be initialized.</dd>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">Object</span> <span class="pre">*</span> <span class="pre">owner</span></code></dt>
+<dd>the object that tracks the region&#8217;s reference count</dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">name</span></code></dt>
+<dd>Region name, becomes part of RAMBlock name used in migration stream
+must be unique within any device</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">size</span></code></dt>
+<dd>size of the region.</dd>
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">ptr</span></code></dt>
+<dd>memory to be mapped; must contain at least <strong>size</strong> bytes.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<blockquote>
+<div>user-provided pointer.  Accesses into the
+region will modify memory directly.</div></blockquote>
+<p>Note that this function does not do anything to cause the data in the
+RAM memory region to be migrated; that is the responsibility of the caller.</p>
+<dl class="function">
+<dt id="c.memory_region_init_ram_device_ptr">
+void <code class="descname">memory_region_init_ram_device_ptr</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, struct Object *<em>&nbsp;owner</em>, const char *<em>&nbsp;name</em>, uint64_t<em>&nbsp;size</em>, void *<em>&nbsp;ptr</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_init_ram_device_ptr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the #MemoryRegion to be initialized.</dd>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">Object</span> <span class="pre">*</span> <span class="pre">owner</span></code></dt>
+<dd>the object that tracks the region&#8217;s reference count</dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">name</span></code></dt>
+<dd>the name of the region.</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">size</span></code></dt>
+<dd>size of the region.</dd>
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">ptr</span></code></dt>
+<dd>memory to be mapped; must contain at least <strong>size</strong> bytes.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<blockquote>
+<div>a user-provided pointer.</div></blockquote>
+<p>A RAM device represents a mapping to a physical device, such as to a PCI
+MMIO BAR of an vfio-pci assigned device.  The memory region may be mapped
+into the VM address space and access to the region will modify memory
+directly.  However, the memory region should not be included in a memory
+dump (device may not be enabled/mapped at the time of the dump), and
+operations incompatible with manipulating MMIO should be avoided.  Replaces
+skip_dump flag.</p>
+<p>Note that this function does not do anything to cause the data in the
+RAM memory region to be migrated; that is the responsibility of the caller.
+(For RAM device memory regions, migrating the contents rarely makes sense.)</p>
+<dl class="function">
+<dt id="c.memory_region_init_alias">
+void <code class="descname">memory_region_init_alias</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, struct Object *<em>&nbsp;owner</em>, const char *<em>&nbsp;name</em>, MemoryRegion *<em>&nbsp;orig</em>, hwaddr<em>&nbsp;offset</em>, uint64_t<em>&nbsp;size</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_init_alias" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the #MemoryRegion to be initialized.</dd>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">Object</span> <span class="pre">*</span> <span class="pre">owner</span></code></dt>
+<dd>the object that tracks the region&#8217;s reference count</dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">name</span></code></dt>
+<dd>used for debugging; not visible to the user or ABI</dd>
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">orig</span></code></dt>
+<dd>the region to be referenced; <strong>mr</strong> will be equivalent to
+<strong>orig</strong> between <strong>offset</strong> and <strong>offset</strong> + <strong>size</strong> - 1.</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">offset</span></code></dt>
+<dd>start of the section in <strong>orig</strong> to be referenced.</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">size</span></code></dt>
+<dd>size of the region.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<blockquote>
+<div>part of another memory region.</div></blockquote>
+<dl class="function">
+<dt id="c.memory_region_init_rom_nomigrate">
+void <code class="descname">memory_region_init_rom_nomigrate</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, struct Object *<em>&nbsp;owner</em>, const char *<em>&nbsp;name</em>, uint64_t<em>&nbsp;size</em>, Error **<em>&nbsp;errp</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_init_rom_nomigrate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the #MemoryRegion to be initialized.</dd>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">Object</span> <span class="pre">*</span> <span class="pre">owner</span></code></dt>
+<dd>the object that tracks the region&#8217;s reference count</dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">name</span></code></dt>
+<dd>Region name, becomes part of RAMBlock name used in migration stream
+must be unique within any device</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">size</span></code></dt>
+<dd>size of the region.</dd>
+<dt><code class="docutils literal"><span class="pre">Error</span> <span class="pre">**</span> <span class="pre">errp</span></code></dt>
+<dd>pointer to Error*, to store an error if it happens.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>This has the same effect as calling memory_region_init_ram_nomigrate()
+and then marking the resulting region read-only with
+memory_region_set_readonly().</p>
+<p>Note that this function does not do anything to cause the data in the
+RAM side of the memory region to be migrated; that is the responsibility
+of the caller.</p>
+<dl class="function">
+<dt id="c.memory_region_init_rom_device_nomigrate">
+void <code class="descname">memory_region_init_rom_device_nomigrate</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, struct Object *<em>&nbsp;owner</em>, const MemoryRegionOps *<em>&nbsp;ops</em>, void *<em>&nbsp;opaque</em>, const char *<em>&nbsp;name</em>, uint64_t<em>&nbsp;size</em>, Error **<em>&nbsp;errp</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_init_rom_device_nomigrate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the #MemoryRegion to be initialized.</dd>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">Object</span> <span class="pre">*</span> <span class="pre">owner</span></code></dt>
+<dd>the object that tracks the region&#8217;s reference count</dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">MemoryRegionOps</span> <span class="pre">*</span> <span class="pre">ops</span></code></dt>
+<dd>callbacks for write access handling (must not be NULL).</dd>
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">opaque</span></code></dt>
+<dd>passed to the read and write callbacks of the <strong>ops</strong> structure.</dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">name</span></code></dt>
+<dd>Region name, becomes part of RAMBlock name used in migration stream
+must be unique within any device</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">size</span></code></dt>
+<dd>size of the region.</dd>
+<dt><code class="docutils literal"><span class="pre">Error</span> <span class="pre">**</span> <span class="pre">errp</span></code></dt>
+<dd>pointer to Error*, to store an error if it happens.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<blockquote>
+<div>Writes are handled via callbacks.</div></blockquote>
+<p>Note that this function does not do anything to cause the data in the
+RAM side of the memory region to be migrated; that is the responsibility
+of the caller.</p>
+<dl class="function">
+<dt id="c.memory_region_init_iommu">
+void <code class="descname">memory_region_init_iommu</code><span class="sig-paren">(</span>void *<em>&nbsp;_iommu_mr</em>, size_t<em>&nbsp;instance_size</em>, const char *<em>&nbsp;mrtypename</em>, Object *<em>&nbsp;owner</em>, const char *<em>&nbsp;name</em>, uint64_t<em>&nbsp;size</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_init_iommu" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">_iommu_mr</span></code></dt>
+<dd>the #IOMMUMemoryRegion to be initialized</dd>
+<dt><code class="docutils literal"><span class="pre">size_t</span> <span class="pre">instance_size</span></code></dt>
+<dd>the IOMMUMemoryRegion subclass instance size</dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">mrtypename</span></code></dt>
+<dd>the type name of the #IOMMUMemoryRegion</dd>
+<dt><code class="docutils literal"><span class="pre">Object</span> <span class="pre">*</span> <span class="pre">owner</span></code></dt>
+<dd>the object that tracks the region&#8217;s reference count</dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">name</span></code></dt>
+<dd>used for debugging; not visible to the user or ABI</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">size</span></code></dt>
+<dd>size of the region.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>that translates addresses</p>
+<p>An IOMMU region translates addresses and forwards accesses to a target
+memory region.</p>
+<p>The IOMMU implementation must define a subclass of TYPE_IOMMU_MEMORY_REGION.
+<strong>_iommu_mr</strong> should be a pointer to enough memory for an instance of
+that subclass, <strong>instance_size</strong> is the size of that subclass, and
+<strong>mrtypename</strong> is its name. This function will initialize <strong>_iommu_mr</strong> as an
+instance of the subclass, and its methods will then be called to handle
+accesses to the memory region. See the documentation of
+#IOMMUMemoryRegionClass for further details.</p>
+<dl class="function">
+<dt id="c.memory_region_init_ram">
+void <code class="descname">memory_region_init_ram</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, struct Object *<em>&nbsp;owner</em>, const char *<em>&nbsp;name</em>, uint64_t<em>&nbsp;size</em>, Error **<em>&nbsp;errp</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_init_ram" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize RAM memory region. Accesses into the region will modify memory directly.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the #MemoryRegion to be initialized</dd>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">Object</span> <span class="pre">*</span> <span class="pre">owner</span></code></dt>
+<dd>the object that tracks the region&#8217;s reference count (must be
+TYPE_DEVICE or a subclass of TYPE_DEVICE, or NULL)</dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">name</span></code></dt>
+<dd>name of the memory region</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">size</span></code></dt>
+<dd>size of the region in bytes</dd>
+<dt><code class="docutils literal"><span class="pre">Error</span> <span class="pre">**</span> <span class="pre">errp</span></code></dt>
+<dd>pointer to Error*, to store an error if it happens.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>This function allocates RAM for a board model or device, and
+arranges for it to be migrated (by calling vmstate_register_ram()
+if <strong>owner</strong> is a DeviceState, or vmstate_register_ram_global() if
+<strong>owner</strong> is NULL).</p>
+<p>TODO: Currently we restrict <strong>owner</strong> to being either NULL (for
+global RAM regions with no owner) or devices, so that we can
+give the RAM block a unique name for migration purposes.
+We should lift this restriction and allow arbitrary Objects.
+If you pass a non-NULL non-device <strong>owner</strong> then we will assert.</p>
+<dl class="function">
+<dt id="c.memory_region_init_rom">
+void <code class="descname">memory_region_init_rom</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, struct Object *<em>&nbsp;owner</em>, const char *<em>&nbsp;name</em>, uint64_t<em>&nbsp;size</em>, Error **<em>&nbsp;errp</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_init_rom" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the #MemoryRegion to be initialized.</dd>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">Object</span> <span class="pre">*</span> <span class="pre">owner</span></code></dt>
+<dd>the object that tracks the region&#8217;s reference count</dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">name</span></code></dt>
+<dd>Region name, becomes part of RAMBlock name used in migration stream
+must be unique within any device</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">size</span></code></dt>
+<dd>size of the region.</dd>
+<dt><code class="docutils literal"><span class="pre">Error</span> <span class="pre">**</span> <span class="pre">errp</span></code></dt>
+<dd>pointer to Error*, to store an error if it happens.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>This has the same effect as calling memory_region_init_ram()
+and then marking the resulting region read-only with
+memory_region_set_readonly(). This includes arranging for the
+contents to be migrated.</p>
+<p>TODO: Currently we restrict <strong>owner</strong> to being either NULL (for
+global RAM regions with no owner) or devices, so that we can
+give the RAM block a unique name for migration purposes.
+We should lift this restriction and allow arbitrary Objects.
+If you pass a non-NULL non-device <strong>owner</strong> then we will assert.</p>
+<dl class="function">
+<dt id="c.memory_region_init_rom_device">
+void <code class="descname">memory_region_init_rom_device</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, struct Object *<em>&nbsp;owner</em>, const MemoryRegionOps *<em>&nbsp;ops</em>, void *<em>&nbsp;opaque</em>, const char *<em>&nbsp;name</em>, uint64_t<em>&nbsp;size</em>, Error **<em>&nbsp;errp</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_init_rom_device" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the #MemoryRegion to be initialized.</dd>
+<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">Object</span> <span class="pre">*</span> <span class="pre">owner</span></code></dt>
+<dd>the object that tracks the region&#8217;s reference count</dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">MemoryRegionOps</span> <span class="pre">*</span> <span class="pre">ops</span></code></dt>
+<dd>callbacks for write access handling (must not be NULL).</dd>
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">opaque</span></code></dt>
+<dd>passed to the read and write callbacks of the <strong>ops</strong> structure.</dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">name</span></code></dt>
+<dd>Region name, becomes part of RAMBlock name used in migration stream
+must be unique within any device</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">size</span></code></dt>
+<dd>size of the region.</dd>
+<dt><code class="docutils literal"><span class="pre">Error</span> <span class="pre">**</span> <span class="pre">errp</span></code></dt>
+<dd>pointer to Error*, to store an error if it happens.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<blockquote>
+<div>Writes are handled via callbacks.</div></blockquote>
+<p>This function initializes a memory region backed by RAM for reads
+and callbacks for writes, and arranges for the RAM backing to
+be migrated (by calling vmstate_register_ram()
+if <strong>owner</strong> is a DeviceState, or vmstate_register_ram_global() if
+<strong>owner</strong> is NULL).</p>
+<p>TODO: Currently we restrict <strong>owner</strong> to being either NULL (for
+global RAM regions with no owner) or devices, so that we can
+give the RAM block a unique name for migration purposes.
+We should lift this restriction and allow arbitrary Objects.
+If you pass a non-NULL non-device <strong>owner</strong> then we will assert.</p>
+<dl class="function">
+<dt id="c.memory_region_owner">
+struct Object * <code class="descname">memory_region_owner</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_owner" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the memory region being queried.</dd>
+</dl>
+<dl class="function">
+<dt id="c.memory_region_size">
+uint64_t <code class="descname">memory_region_size</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_size" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the memory region being queried.</dd>
+</dl>
+<dl class="function">
+<dt id="c.memory_region_is_ram">
+<a class="reference internal" href="qom/object_interfaces.html#c.bool" title="bool">bool</a> <code class="descname">memory_region_is_ram</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_is_ram" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the memory region being queried</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Returns <code class="docutils literal"><span class="pre">true</span></code> if a memory region is random access.</p>
+<dl class="function">
+<dt id="c.memory_region_is_ram_device">
+<a class="reference internal" href="qom/object_interfaces.html#c.bool" title="bool">bool</a> <code class="descname">memory_region_is_ram_device</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_is_ram_device" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the memory region being queried</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Returns <code class="docutils literal"><span class="pre">true</span></code> if a memory region is a device backed ram region</p>
+<dl class="function">
+<dt id="c.memory_region_is_romd">
+<a class="reference internal" href="qom/object_interfaces.html#c.bool" title="bool">bool</a> <code class="descname">memory_region_is_romd</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_is_romd" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the memory region being queried</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Returns <code class="docutils literal"><span class="pre">true</span></code> if a memory region is a ROM device and currently set to allow
+direct reads.</p>
+<dl class="function">
+<dt id="c.memory_region_get_iommu">
+IOMMUMemoryRegion * <code class="descname">memory_region_get_iommu</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_get_iommu" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the memory region being queried</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Returns pointer to IOMMUMemoryRegion if a memory region is an iommu,
+otherwise NULL.</p>
+<dl class="function">
+<dt id="c.memory_region_get_iommu_class_nocheck">
+<a class="reference internal" href="#c.IOMMUMemoryRegionClass" title="IOMMUMemoryRegionClass">IOMMUMemoryRegionClass</a> * <code class="descname">memory_region_get_iommu_class_nocheck</code><span class="sig-paren">(</span>IOMMUMemoryRegion *<em>&nbsp;iommu_mr</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_get_iommu_class_nocheck" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">IOMMUMemoryRegion</span> <span class="pre">*</span> <span class="pre">iommu_mr</span></code></dt>
+<dd>the memory region being queried</dd>
+</dl>
+<p><strong>Description</strong></p>
+<blockquote>
+<div>if an iommu or NULL if not</div></blockquote>
+<p>Returns pointer to IOMMUMemoryRegionClass if a memory region is an iommu,
+otherwise NULL. This is fast path avoiding QOM checking, use with caution.</p>
+<dl class="function">
+<dt id="c.memory_region_iommu_get_min_page_size">
+uint64_t <code class="descname">memory_region_iommu_get_min_page_size</code><span class="sig-paren">(</span>IOMMUMemoryRegion *<em>&nbsp;iommu_mr</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_iommu_get_min_page_size" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">IOMMUMemoryRegion</span> <span class="pre">*</span> <span class="pre">iommu_mr</span></code></dt>
+<dd>the memory region being queried</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>for an iommu</p>
+<p>Returns minimum supported page size for an iommu.</p>
+<dl class="function">
+<dt id="c.memory_region_notify_iommu">
+void <code class="descname">memory_region_notify_iommu</code><span class="sig-paren">(</span>IOMMUMemoryRegion *<em>&nbsp;iommu_mr</em>, int<em>&nbsp;iommu_idx</em>, IOMMUTLBEntry<em>&nbsp;entry</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_notify_iommu" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">IOMMUMemoryRegion</span> <span class="pre">*</span> <span class="pre">iommu_mr</span></code></dt>
+<dd>the memory region that was changed</dd>
+<dt><code class="docutils literal"><span class="pre">int</span> <span class="pre">iommu_idx</span></code></dt>
+<dd>the IOMMU index for the translation table which has changed</dd>
+<dt><code class="docutils literal"><span class="pre">IOMMUTLBEntry</span> <span class="pre">entry</span></code></dt>
+<dd>the new entry in the IOMMU translation table.  The entry
+replaces all old entries for the same virtual I/O address range.
+Deleted entries have .**perm** == 0.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>The notification type will be decided by entry.perm bits:</p>
+<ul class="simple">
+<li>For UNMAP (cache invalidation) notifies: set entry.perm to IOMMU_NONE.</li>
+<li>For MAP (newly added entry) notifies: set entry.perm to the
+permission of the page (which is definitely !IOMMU_NONE).</li>
+</ul>
+<p><strong>Note</strong></p>
+<p>for any IOMMU implementation, an in-place mapping change
+should be notified with an UNMAP followed by a MAP.</p>
+<dl class="function">
+<dt id="c.memory_region_notify_one">
+void <code class="descname">memory_region_notify_one</code><span class="sig-paren">(</span>IOMMUNotifier *<em>&nbsp;notifier</em>, IOMMUTLBEntry *<em>&nbsp;entry</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_notify_one" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">IOMMUNotifier</span> <span class="pre">*</span> <span class="pre">notifier</span></code></dt>
+<dd>the notifier to be notified</dd>
+<dt><code class="docutils literal"><span class="pre">IOMMUTLBEntry</span> <span class="pre">*</span> <span class="pre">entry</span></code></dt>
+<dd>the new entry in the IOMMU translation table.  The entry
+replaces all old entries for the same virtual I/O address range.
+Deleted entries have .**perm** == 0.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<blockquote>
+<div>entry to a single notifier</div></blockquote>
+<p>This works just like memory_region_notify_iommu(), but it only
+notifies a specific notifier, not all of them.</p>
+<dl class="function">
+<dt id="c.memory_region_register_iommu_notifier">
+void <code class="descname">memory_region_register_iommu_notifier</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, IOMMUNotifier *<em>&nbsp;n</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_register_iommu_notifier" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the memory region to observe</dd>
+<dt><code class="docutils literal"><span class="pre">IOMMUNotifier</span> <span class="pre">*</span> <span class="pre">n</span></code></dt>
+<dd>the IOMMUNotifier to be added; the notify callback receives a
+pointer to an #IOMMUTLBEntry as the opaque value; the pointer
+ceases to be valid on exit from the notifier.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>IOMMU translation entries.</p>
+<dl class="function">
+<dt id="c.memory_region_iommu_replay">
+void <code class="descname">memory_region_iommu_replay</code><span class="sig-paren">(</span>IOMMUMemoryRegion *<em>&nbsp;iommu_mr</em>, IOMMUNotifier *<em>&nbsp;n</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_iommu_replay" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">IOMMUMemoryRegion</span> <span class="pre">*</span> <span class="pre">iommu_mr</span></code></dt>
+<dd>the memory region to observe</dd>
+<dt><code class="docutils literal"><span class="pre">IOMMUNotifier</span> <span class="pre">*</span> <span class="pre">n</span></code></dt>
+<dd>the notifier to which to replay iommu mappings</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>a notifier with the minimum page granularity returned by
+mr-&gt;iommu_ops-&gt;get_page_size().</p>
+<p><strong>Note</strong></p>
+<p>this is not related to record-and-replay functionality.</p>
+<dl class="function">
+<dt id="c.memory_region_iommu_replay_all">
+void <code class="descname">memory_region_iommu_replay_all</code><span class="sig-paren">(</span>IOMMUMemoryRegion *<em>&nbsp;iommu_mr</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_iommu_replay_all" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">IOMMUMemoryRegion</span> <span class="pre">*</span> <span class="pre">iommu_mr</span></code></dt>
+<dd>the memory region to observe</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>to all the notifiers registered.</p>
+<p><strong>Note</strong></p>
+<p>this is not related to record-and-replay functionality.</p>
+<dl class="function">
+<dt id="c.memory_region_unregister_iommu_notifier">
+void <code class="descname">memory_region_unregister_iommu_notifier</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, IOMMUNotifier *<em>&nbsp;n</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_unregister_iommu_notifier" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the memory region which was observed and for which notity_stopped()
+needs to be called</dd>
+<dt><code class="docutils literal"><span class="pre">IOMMUNotifier</span> <span class="pre">*</span> <span class="pre">n</span></code></dt>
+<dd>the notifier to be removed.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>changes to IOMMU translation entries.</p>
+<dl class="function">
+<dt id="c.memory_region_iommu_get_attr">
+int <code class="descname">memory_region_iommu_get_attr</code><span class="sig-paren">(</span>IOMMUMemoryRegion *<em>&nbsp;iommu_mr</em>, enum IOMMUMemoryRegionAttr<em>&nbsp;attr</em>, void *<em>&nbsp;data</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_iommu_get_attr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">IOMMUMemoryRegion</span> <span class="pre">*</span> <span class="pre">iommu_mr</span></code></dt>
+<dd>the memory region</dd>
+<dt><code class="docutils literal"><span class="pre">enum</span> <span class="pre">IOMMUMemoryRegionAttr</span> <span class="pre">attr</span></code></dt>
+<dd>the requested attribute</dd>
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">data</span></code></dt>
+<dd>a pointer to the requested attribute data</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>defined on the IOMMU.</p>
+<p>Returns 0 on success, or a negative errno otherwise. In particular,
+-EINVAL indicates that the IOMMU does not support the requested
+attribute.</p>
+<dl class="function">
+<dt id="c.memory_region_iommu_attrs_to_index">
+int <code class="descname">memory_region_iommu_attrs_to_index</code><span class="sig-paren">(</span>IOMMUMemoryRegion *<em>&nbsp;iommu_mr</em>, MemTxAttrs<em>&nbsp;attrs</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_iommu_attrs_to_index" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">IOMMUMemoryRegion</span> <span class="pre">*</span> <span class="pre">iommu_mr</span></code></dt>
+<dd>the memory region</dd>
+<dt><code class="docutils literal"><span class="pre">MemTxAttrs</span> <span class="pre">attrs</span></code></dt>
+<dd>the memory transaction attributes</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>use for translations with the given memory transaction attributes.</p>
+<dl class="function">
+<dt id="c.memory_region_iommu_num_indexes">
+int <code class="descname">memory_region_iommu_num_indexes</code><span class="sig-paren">(</span>IOMMUMemoryRegion *<em>&nbsp;iommu_mr</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_iommu_num_indexes" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">IOMMUMemoryRegion</span> <span class="pre">*</span> <span class="pre">iommu_mr</span></code></dt>
+<dd>the memory region</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>indexes that this IOMMU supports.</p>
+<dl class="function">
+<dt id="c.memory_region_name">
+const char * <code class="descname">memory_region_name</code><span class="sig-paren">(</span>const MemoryRegion *<em>&nbsp;mr</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the memory region being queried</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Returns the string that was used to initialize the memory region.</p>
+<dl class="function">
+<dt id="c.memory_region_is_logging">
+<a class="reference internal" href="qom/object_interfaces.html#c.bool" title="bool">bool</a> <code class="descname">memory_region_is_logging</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, uint8_t<em>&nbsp;client</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_is_logging" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the memory region being queried</dd>
+<dt><code class="docutils literal"><span class="pre">uint8_t</span> <span class="pre">client</span></code></dt>
+<dd>the client being queried</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Returns <code class="docutils literal"><span class="pre">true</span></code> if the memory region is logging writes for the given client</p>
+<dl class="function">
+<dt id="c.memory_region_get_dirty_log_mask">
+uint8_t <code class="descname">memory_region_get_dirty_log_mask</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_get_dirty_log_mask" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the memory region being queried</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>memory region is logging writes.</p>
+<p>Returns a bitmap of clients, in which the DIRTY_MEMORY_* constants
+are the bit indices.</p>
+<dl class="function">
+<dt id="c.memory_region_is_rom">
+<a class="reference internal" href="qom/object_interfaces.html#c.bool" title="bool">bool</a> <code class="descname">memory_region_is_rom</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_is_rom" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the memory region being queried</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Returns <code class="docutils literal"><span class="pre">true</span></code> if a memory region is read-only memory.</p>
+<dl class="function">
+<dt id="c.memory_region_is_nonvolatile">
+<a class="reference internal" href="qom/object_interfaces.html#c.bool" title="bool">bool</a> <code class="descname">memory_region_is_nonvolatile</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_is_nonvolatile" title="Permalink to this definition">¶</a></dt>
+<dd><p>volatile</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the memory region being queried</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Returns <code class="docutils literal"><span class="pre">true</span></code> is a memory region is non-volatile memory.</p>
+<dl class="function">
+<dt id="c.memory_region_get_fd">
+int <code class="descname">memory_region_get_fd</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_get_fd" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the RAM or alias memory region being queried.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Returns a file descriptor backing a file-based RAM memory region,
+or -1 if the region is not a file-based RAM memory region.</p>
+<dl class="function">
+<dt id="c.memory_region_from_host">
+MemoryRegion * <code class="descname">memory_region_from_host</code><span class="sig-paren">(</span>void *<em>&nbsp;ptr</em>, ram_addr_t *<em>&nbsp;offset</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_from_host" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">ptr</span></code></dt>
+<dd>the host pointer to be converted</dd>
+<dt><code class="docutils literal"><span class="pre">ram_addr_t</span> <span class="pre">*</span> <span class="pre">offset</span></code></dt>
+<dd>the offset within memory region</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>and an offset within it.</p>
+<p>Given a host pointer inside a RAM memory region (created with
+memory_region_init_ram() or memory_region_init_ram_ptr()), return
+the MemoryRegion and the offset within it.</p>
+<p>Use with care; by the time this function returns, the returned pointer is
+not protected by RCU anymore.  If the caller is not within an RCU critical
+section and does not hold the iothread lock, it must have other means of
+protecting the pointer, such as a reference to the region that includes
+the incoming ram_addr_t.</p>
+<dl class="function">
+<dt id="c.memory_region_get_ram_ptr">
+void * <code class="descname">memory_region_get_ram_ptr</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_get_ram_ptr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the memory region being queried.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Returns a host pointer to a RAM memory region (created with
+memory_region_init_ram() or memory_region_init_ram_ptr()).</p>
+<p>Use with care; by the time this function returns, the returned pointer is
+not protected by RCU anymore.  If the caller is not within an RCU critical
+section and does not hold the iothread lock, it must have other means of
+protecting the pointer, such as a reference to the region that includes
+the incoming ram_addr_t.</p>
+<dl class="function">
+<dt id="c.memory_region_set_log">
+void <code class="descname">memory_region_set_log</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, <a class="reference internal" href="qom/object_interfaces.html#c.bool" title="bool">bool</a><em>&nbsp;log</em>, unsigned<em>&nbsp;client</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_set_log" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the memory region being updated.</dd>
+<dt><code class="docutils literal"><span class="pre">bool</span> <span class="pre">log</span></code></dt>
+<dd>whether dirty logging is to be enabled or disabled.</dd>
+<dt><code class="docutils literal"><span class="pre">unsigned</span> <span class="pre">client</span></code></dt>
+<dd>the user of the logging information; <code class="docutils literal"><span class="pre">DIRTY_MEMORY_VGA</span></code> only.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Turns dirty logging on or off for a specified client (display, migration).
+Only meaningful for RAM regions.</p>
+<dl class="function">
+<dt id="c.memory_region_set_dirty">
+void <code class="descname">memory_region_set_dirty</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, hwaddr<em>&nbsp;addr</em>, hwaddr<em>&nbsp;size</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_set_dirty" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the memory region being dirtied.</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">addr</span></code></dt>
+<dd>the address (relative to the start of the region) being dirtied.</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">size</span></code></dt>
+<dd>size of the range being dirtied.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Marks a range of bytes as dirty, after it has been dirtied outside
+guest code.</p>
+<dl class="function">
+<dt id="c.memory_region_clear_dirty_bitmap">
+void <code class="descname">memory_region_clear_dirty_bitmap</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, hwaddr<em>&nbsp;start</em>, hwaddr<em>&nbsp;len</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_clear_dirty_bitmap" title="Permalink to this definition">¶</a></dt>
+<dd><p>clear dirty bitmap for memory range</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the memory region to clear the dirty log upon</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">start</span></code></dt>
+<dd>start address offset within the memory region</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">len</span></code></dt>
+<dd>length of the memory region to clear dirty bitmap</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>This function is called when the caller wants to clear the remote
+dirty bitmap of a memory range within the memory region.  This can
+be used by e.g. KVM to manually clear dirty log when
+KVM_CAP_MANUAL_DIRTY_LOG_PROTECT is declared support by the host
+kernel.</p>
+<dl class="function">
+<dt id="c.memory_region_snapshot_and_clear_dirty">
+DirtyBitmapSnapshot * <code class="descname">memory_region_snapshot_and_clear_dirty</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, hwaddr<em>&nbsp;addr</em>, hwaddr<em>&nbsp;size</em>, unsigned<em>&nbsp;client</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_snapshot_and_clear_dirty" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the memory region being queried.</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">addr</span></code></dt>
+<dd>the address (relative to the start of the region) being queried.</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">size</span></code></dt>
+<dd>the size of the range being queried.</dd>
+<dt><code class="docutils literal"><span class="pre">unsigned</span> <span class="pre">client</span></code></dt>
+<dd>the user of the logging information; typically <code class="docutils literal"><span class="pre">DIRTY_MEMORY_VGA</span></code>.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<blockquote>
+<div>bitmap and clear it.</div></blockquote>
+<p>Creates a snapshot of the dirty bitmap, clears the dirty bitmap and
+returns the snapshot.  The snapshot can then be used to query dirty
+status, using memory_region_snapshot_get_dirty.  Snapshotting allows
+querying the same page multiple times, which is especially useful for
+display updates where the scanlines often are not page aligned.</p>
+<p>The dirty bitmap region which gets copyed into the snapshot (and
+cleared afterwards) can be larger than requested.  The boundaries
+are rounded up/down so complete bitmap longs (covering 64 pages on
+64bit hosts) can be copied over into the bitmap snapshot.  Which
+isn&#8217;t a problem for display updates as the extra pages are outside
+the visible area, and in case the visible area changes a full
+display redraw is due anyway.  Should other use cases for this
+function emerge we might have to revisit this implementation
+detail.</p>
+<p>Use g_free to release DirtyBitmapSnapshot.</p>
+<dl class="function">
+<dt id="c.memory_region_snapshot_get_dirty">
+<a class="reference internal" href="qom/object_interfaces.html#c.bool" title="bool">bool</a> <code class="descname">memory_region_snapshot_get_dirty</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, DirtyBitmapSnapshot *<em>&nbsp;snap</em>, hwaddr<em>&nbsp;addr</em>, hwaddr<em>&nbsp;size</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_snapshot_get_dirty" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the memory region being queried.</dd>
+<dt><code class="docutils literal"><span class="pre">DirtyBitmapSnapshot</span> <span class="pre">*</span> <span class="pre">snap</span></code></dt>
+<dd>the dirty bitmap snapshot</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">addr</span></code></dt>
+<dd>the address (relative to the start of the region) being queried.</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">size</span></code></dt>
+<dd>the size of the range being queried.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<blockquote>
+<div>in the specified dirty bitmap snapshot.</div></blockquote>
+<dl class="function">
+<dt id="c.memory_region_reset_dirty">
+void <code class="descname">memory_region_reset_dirty</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, hwaddr<em>&nbsp;addr</em>, hwaddr<em>&nbsp;size</em>, unsigned<em>&nbsp;client</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_reset_dirty" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the region being updated.</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">addr</span></code></dt>
+<dd>the start of the subrange being cleaned.</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">size</span></code></dt>
+<dd>the size of the subrange being cleaned.</dd>
+<dt><code class="docutils literal"><span class="pre">unsigned</span> <span class="pre">client</span></code></dt>
+<dd>the user of the logging information; <code class="docutils literal"><span class="pre">DIRTY_MEMORY_MIGRATION</span></code> or
+<code class="docutils literal"><span class="pre">DIRTY_MEMORY_VGA</span></code>.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<blockquote>
+<div>client.</div></blockquote>
+<p>Marks a range of pages as no longer dirty.</p>
+<dl class="function">
+<dt id="c.memory_region_flush_rom_device">
+void <code class="descname">memory_region_flush_rom_device</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, hwaddr<em>&nbsp;addr</em>, hwaddr<em>&nbsp;size</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_flush_rom_device" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the region being flushed.</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">addr</span></code></dt>
+<dd>the start, relative to the start of the region, of the range being
+flushed.</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">size</span></code></dt>
+<dd>the size, in bytes, of the range being flushed.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<blockquote>
+<div>TBs (for self-modifying code).</div></blockquote>
+<p>The MemoryRegionOps-&gt;write() callback of a ROM device must use this function
+to mark byte ranges that have been modified internally, such as by directly
+accessing the memory returned by memory_region_get_ram_ptr().</p>
+<p>This function marks the range dirty and invalidates TBs so that TCG can
+detect self-modifying code.</p>
+<dl class="function">
+<dt id="c.memory_region_set_readonly">
+void <code class="descname">memory_region_set_readonly</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, <a class="reference internal" href="qom/object_interfaces.html#c.bool" title="bool">bool</a><em>&nbsp;readonly</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_set_readonly" title="Permalink to this definition">¶</a></dt>
+<dd><p>only (or read-write)</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the region being updated.</dd>
+<dt><code class="docutils literal"><span class="pre">bool</span> <span class="pre">readonly</span></code></dt>
+<dd>whether rhe region is to be ROM or RAM.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Allows a memory region to be marked as read-only (turning it into a ROM).
+only useful on RAM regions.</p>
+<dl class="function">
+<dt id="c.memory_region_set_nonvolatile">
+void <code class="descname">memory_region_set_nonvolatile</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, <a class="reference internal" href="qom/object_interfaces.html#c.bool" title="bool">bool</a><em>&nbsp;nonvolatile</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_set_nonvolatile" title="Permalink to this definition">¶</a></dt>
+<dd><p>volatile</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the region being updated.</dd>
+<dt><code class="docutils literal"><span class="pre">bool</span> <span class="pre">nonvolatile</span></code></dt>
+<dd>whether rhe region is to be non-volatile.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Allows a memory region to be marked as non-volatile.
+only useful on RAM regions.</p>
+<dl class="function">
+<dt id="c.memory_region_rom_device_set_romd">
+void <code class="descname">memory_region_rom_device_set_romd</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, <a class="reference internal" href="qom/object_interfaces.html#c.bool" title="bool">bool</a><em>&nbsp;romd_mode</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_rom_device_set_romd" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the memory region to be updated</dd>
+<dt><code class="docutils literal"><span class="pre">bool</span> <span class="pre">romd_mode</span></code></dt>
+<dd><code class="docutils literal"><span class="pre">true</span></code> to put the region into ROMD mode</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Allows a ROM device (initialized with memory_region_init_rom_device() to
+set to ROMD mode (default) or MMIO mode.  When it is in ROMD mode, the
+device is mapped to guest memory and satisfies read access directly.
+When in MMIO mode, reads are forwarded to the #MemoryRegion.read function.
+Writes are always handled by the #MemoryRegion.write function.</p>
+<dl class="function">
+<dt id="c.memory_region_set_coalescing">
+void <code class="descname">memory_region_set_coalescing</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_set_coalescing" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the memory region to be write coalesced</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Enabled writes to a region to be queued for later processing. MMIO -&gt;write
+callbacks may be delayed until a non-coalesced MMIO is issued.
+Only useful for IO regions.  Roughly similar to write-combining hardware.</p>
+<dl class="function">
+<dt id="c.memory_region_add_coalescing">
+void <code class="descname">memory_region_add_coalescing</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, hwaddr<em>&nbsp;offset</em>, uint64_t<em>&nbsp;size</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_add_coalescing" title="Permalink to this definition">¶</a></dt>
+<dd><p>range of a region.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the memory region to be updated.</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">offset</span></code></dt>
+<dd>the start of the range within the region to be coalesced.</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">size</span></code></dt>
+<dd>the size of the subrange to be coalesced.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Like memory_region_set_coalescing(), but works on a sub-range of a region.
+Multiple calls can be issued coalesced disjoint ranges.</p>
+<dl class="function">
+<dt id="c.memory_region_clear_coalescing">
+void <code class="descname">memory_region_clear_coalescing</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_clear_coalescing" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the memory region to be updated.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Disables any coalescing caused by memory_region_set_coalescing() or
+memory_region_add_coalescing().  Roughly equivalent to uncacheble memory
+hardware.</p>
+<dl class="function">
+<dt id="c.memory_region_set_flush_coalesced">
+void <code class="descname">memory_region_set_flush_coalesced</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_set_flush_coalesced" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the memory region to be updated.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<blockquote>
+<div>accesses.</div></blockquote>
+<p>Ensure that pending coalesced MMIO request are flushed before the memory
+region is accessed. This property is automatically enabled for all regions
+passed to memory_region_set_coalescing() and memory_region_add_coalescing().</p>
+<dl class="function">
+<dt id="c.memory_region_clear_flush_coalesced">
+void <code class="descname">memory_region_clear_flush_coalesced</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_clear_flush_coalesced" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the memory region to be updated.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<blockquote>
+<div>accesses.</div></blockquote>
+<p>Clear the automatic coalesced MMIO flushing enabled via
+memory_region_set_flush_coalesced. Note that this service has no effect on
+memory regions that have MMIO coalescing enabled for themselves. For them,
+automatic flushing will stop once coalescing is disabled.</p>
+<dl class="function">
+<dt id="c.memory_region_clear_global_locking">
+void <code class="descname">memory_region_clear_global_locking</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_clear_global_locking" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the memory region to be updated.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<blockquote>
+<div>not depend on the QEMU global lock.</div></blockquote>
+<p>By clearing this property, accesses to the memory region will be processed
+outside of QEMU&#8217;s global lock (unless the lock is held on when issuing the
+access request). In this case, the device model implementing the access
+handlers is responsible for synchronization of concurrency.</p>
+<dl class="function">
+<dt id="c.memory_region_add_eventfd">
+void <code class="descname">memory_region_add_eventfd</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, hwaddr<em>&nbsp;addr</em>, unsigned<em>&nbsp;size</em>, <a class="reference internal" href="qom/object_interfaces.html#c.bool" title="bool">bool</a><em>&nbsp;match_data</em>, uint64_t<em>&nbsp;data</em>, EventNotifier *<em>&nbsp;e</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_add_eventfd" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the memory region being updated.</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">addr</span></code></dt>
+<dd>the address within <strong>mr</strong> that is to be monitored</dd>
+<dt><code class="docutils literal"><span class="pre">unsigned</span> <span class="pre">size</span></code></dt>
+<dd>the size of the access to trigger the eventfd</dd>
+<dt><code class="docutils literal"><span class="pre">bool</span> <span class="pre">match_data</span></code></dt>
+<dd>whether to match against <strong>data</strong>, instead of just <strong>addr</strong></dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">data</span></code></dt>
+<dd>the data to match against the guest write</dd>
+<dt><code class="docutils literal"><span class="pre">EventNotifier</span> <span class="pre">*</span> <span class="pre">e</span></code></dt>
+<dd>event notifier to be triggered when <strong>addr</strong>, <strong>size</strong>, and <strong>data</strong> all match.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<blockquote>
+<div>is written to a location.</div></blockquote>
+<p>Marks a word in an IO region (initialized with memory_region_init_io())
+as a trigger for an eventfd event.  The I/O callback will not be called.
+The caller must be prepared to handle failure (that is, take the required
+action if the callback _is_ called).</p>
+<dl class="function">
+<dt id="c.memory_region_del_eventfd">
+void <code class="descname">memory_region_del_eventfd</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, hwaddr<em>&nbsp;addr</em>, unsigned<em>&nbsp;size</em>, <a class="reference internal" href="qom/object_interfaces.html#c.bool" title="bool">bool</a><em>&nbsp;match_data</em>, uint64_t<em>&nbsp;data</em>, EventNotifier *<em>&nbsp;e</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_del_eventfd" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the memory region being updated.</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">addr</span></code></dt>
+<dd>the address within <strong>mr</strong> that is to be monitored</dd>
+<dt><code class="docutils literal"><span class="pre">unsigned</span> <span class="pre">size</span></code></dt>
+<dd>the size of the access to trigger the eventfd</dd>
+<dt><code class="docutils literal"><span class="pre">bool</span> <span class="pre">match_data</span></code></dt>
+<dd>whether to match against <strong>data</strong>, instead of just <strong>addr</strong></dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">data</span></code></dt>
+<dd>the data to match against the guest write</dd>
+<dt><code class="docutils literal"><span class="pre">EventNotifier</span> <span class="pre">*</span> <span class="pre">e</span></code></dt>
+<dd>event notifier to be triggered when <strong>addr</strong>, <strong>size</strong>, and <strong>data</strong> all match.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Cancels an eventfd trigger requested by a previous
+memory_region_add_eventfd() call.</p>
+<dl class="function">
+<dt id="c.memory_region_add_subregion">
+void <code class="descname">memory_region_add_subregion</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, hwaddr<em>&nbsp;offset</em>, MemoryRegion *<em>&nbsp;subregion</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_add_subregion" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the region to contain the new subregion; must be a container
+initialized with memory_region_init().</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">offset</span></code></dt>
+<dd>the offset relative to <strong>mr</strong> where <strong>subregion</strong> is added.</dd>
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">subregion</span></code></dt>
+<dd>the subregion to be added.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Adds a subregion at <strong>offset</strong>.  The subregion may not overlap with other
+subregions (except for those explicitly marked as overlapping).  A region
+may only be added once as a subregion (unless removed with
+memory_region_del_subregion()); use memory_region_init_alias() if you
+want a region to be a subregion in multiple locations.</p>
+<dl class="function">
+<dt id="c.memory_region_add_subregion_overlap">
+void <code class="descname">memory_region_add_subregion_overlap</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, hwaddr<em>&nbsp;offset</em>, MemoryRegion *<em>&nbsp;subregion</em>, int<em>&nbsp;priority</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_add_subregion_overlap" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the region to contain the new subregion; must be a container
+initialized with memory_region_init().</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">offset</span></code></dt>
+<dd>the offset relative to <strong>mr</strong> where <strong>subregion</strong> is added.</dd>
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">subregion</span></code></dt>
+<dd>the subregion to be added.</dd>
+<dt><code class="docutils literal"><span class="pre">int</span> <span class="pre">priority</span></code></dt>
+<dd>used for resolving overlaps; highest priority wins.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<blockquote>
+<div>with overlap.</div></blockquote>
+<p>Adds a subregion at <strong>offset</strong>.  The subregion may overlap with other
+subregions.  Conflicts are resolved by having a higher <strong>priority</strong> hide a
+lower <strong>priority</strong>. Subregions without priority are taken as <strong>priority</strong> 0.
+A region may only be added once as a subregion (unless removed with
+memory_region_del_subregion()); use memory_region_init_alias() if you
+want a region to be a subregion in multiple locations.</p>
+<dl class="function">
+<dt id="c.memory_region_get_ram_addr">
+ram_addr_t <code class="descname">memory_region_get_ram_addr</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_get_ram_addr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the memory region to get the ram address for</dd>
+</dl>
+<p><strong>Description</strong></p>
+<blockquote>
+<div>region</div></blockquote>
+<dl class="function">
+<dt id="c.memory_region_del_subregion">
+void <code class="descname">memory_region_del_subregion</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, MemoryRegion *<em>&nbsp;subregion</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_del_subregion" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>the container to be updated.</dd>
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">subregion</span></code></dt>
+<dd>the region being removed; must be a current subregion of <strong>mr</strong>.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Removes a subregion from its container.</p>
+<dl class="function">
+<dt id="c.memory_region_present">
+<a class="reference internal" href="qom/object_interfaces.html#c.bool" title="bool">bool</a> <code class="descname">memory_region_present</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;container</em>, hwaddr<em>&nbsp;addr</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_present" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">container</span></code></dt>
+<dd>a #MemoryRegion within which <strong>addr</strong> is a relative address</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">addr</span></code></dt>
+<dd>the area within <strong>container</strong> to be searched</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>translates into #MemoryRegion within <strong>container</strong></p>
+<p>Answer whether a #MemoryRegion within <strong>container</strong> covers the address
+<strong>addr</strong>.</p>
+<dl class="function">
+<dt id="c.memory_region_is_mapped">
+<a class="reference internal" href="qom/object_interfaces.html#c.bool" title="bool">bool</a> <code class="descname">memory_region_is_mapped</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_is_mapped" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>a #MemoryRegion which should be checked if it&#8217;s mapped</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>into any address space.</p>
+<dl class="function">
+<dt id="c.memory_region_find">
+<a class="reference internal" href="#c.MemoryRegionSection" title="MemoryRegionSection">MemoryRegionSection</a> <code class="descname">memory_region_find</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, hwaddr<em>&nbsp;addr</em>, uint64_t<em>&nbsp;size</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_find" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>a MemoryRegion within which <strong>addr</strong> is a relative address</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">addr</span></code></dt>
+<dd>start of the area within <strong>as</strong> to be searched</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">size</span></code></dt>
+<dd>size of the area to be searched</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>MemoryRegion into a #MemoryRegionSection.</p>
+<p>Locates the first #MemoryRegion within <strong>mr</strong> that overlaps the range
+given by <strong>addr</strong> and <strong>size</strong>.</p>
+<p>Returns a #MemoryRegionSection that describes a contiguous overlap.
+It will have the following characteristics:</p>
+<ul class="simple">
+<li>.**size** = 0 iff no overlap was found</li>
+<li>.**mr** is non-<code class="docutils literal"><span class="pre">NULL</span></code> iff an overlap was found</li>
+</ul>
+<p>Remember that in the return value the <strong>offset_within_region</strong> is
+relative to the returned region (in the .**mr** field), not to the
+<strong>mr</strong> argument.</p>
+<p>Similarly, the <strong>.offset_within_address_space</strong> is relative to the
+address space that contains both regions, the passed and the
+returned one.  However, in the special case where the <strong>mr</strong> argument
+has no container (and thus is the root of the address space), the
+following will hold:</p>
+<ul class="simple">
+<li>.**offset_within_address_space** &gt;= <strong>addr</strong></li>
+<li>.**offset_within_address_space** + .**size** &lt;= <strong>addr</strong> + <strong>size</strong></li>
+</ul>
+<dl class="function">
+<dt id="c.memory_global_dirty_log_sync">
+void <code class="descname">memory_global_dirty_log_sync</code><span class="sig-paren">(</span>void<span class="sig-paren">)</span><a class="headerlink" href="#c.memory_global_dirty_log_sync" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">void</span></code></dt>
+<dd>no arguments</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Synchronizes the dirty page log for all address spaces.</p>
+<dl class="function">
+<dt id="c.memory_global_after_dirty_log_sync">
+void <code class="descname">memory_global_after_dirty_log_sync</code><span class="sig-paren">(</span>void<span class="sig-paren">)</span><a class="headerlink" href="#c.memory_global_after_dirty_log_sync" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">void</span></code></dt>
+<dd>no arguments</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Synchronizes the vCPUs with a thread that is reading the dirty bitmap.
+This function must be called after the dirty log bitmap is cleared, and
+before dirty guest memory pages are read.  If you are using
+#DirtyBitmapSnapshot, memory_region_snapshot_and_clear_dirty() takes
+care of doing this.</p>
+<dl class="function">
+<dt id="c.memory_region_transaction_begin">
+void <code class="descname">memory_region_transaction_begin</code><span class="sig-paren">(</span>void<span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_transaction_begin" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">void</span></code></dt>
+<dd>no arguments</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>During a transaction, changes will be accumulated and made visible
+only when the transaction ends (is committed).</p>
+<dl class="function">
+<dt id="c.memory_region_transaction_commit">
+void <code class="descname">memory_region_transaction_commit</code><span class="sig-paren">(</span>void<span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_transaction_commit" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">void</span></code></dt>
+<dd>no arguments</dd>
+</dl>
+<p><strong>Description</strong></p>
+<blockquote>
+<div>visible to the guest.</div></blockquote>
+<dl class="function">
+<dt id="c.memory_listener_register">
+void <code class="descname">memory_listener_register</code><span class="sig-paren">(</span><a class="reference internal" href="#c.MemoryListener" title="MemoryListener">MemoryListener</a> *<em>&nbsp;listener</em>, <a class="reference internal" href="#c.AddressSpace" title="AddressSpace">AddressSpace</a> *<em>&nbsp;filter</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_listener_register" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryListener</span> <span class="pre">*</span> <span class="pre">listener</span></code></dt>
+<dd>an object containing the callbacks to be called</dd>
+<dt><code class="docutils literal"><span class="pre">AddressSpace</span> <span class="pre">*</span> <span class="pre">filter</span></code></dt>
+<dd>if non-<code class="docutils literal"><span class="pre">NULL</span></code>, only regions in this address space will be observed</dd>
+</dl>
+<p><strong>Description</strong></p>
+<blockquote>
+<div>sections are mapped or unmapped into an address
+space</div></blockquote>
+<dl class="function">
+<dt id="c.memory_listener_unregister">
+void <code class="descname">memory_listener_unregister</code><span class="sig-paren">(</span><a class="reference internal" href="#c.MemoryListener" title="MemoryListener">MemoryListener</a> *<em>&nbsp;listener</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_listener_unregister" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryListener</span> <span class="pre">*</span> <span class="pre">listener</span></code></dt>
+<dd>an object containing the callbacks to be removed</dd>
+</dl>
+<dl class="function">
+<dt id="c.memory_global_dirty_log_start">
+void <code class="descname">memory_global_dirty_log_start</code><span class="sig-paren">(</span>void<span class="sig-paren">)</span><a class="headerlink" href="#c.memory_global_dirty_log_start" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">void</span></code></dt>
+<dd>no arguments</dd>
+</dl>
+<dl class="function">
+<dt id="c.memory_global_dirty_log_stop">
+void <code class="descname">memory_global_dirty_log_stop</code><span class="sig-paren">(</span>void<span class="sig-paren">)</span><a class="headerlink" href="#c.memory_global_dirty_log_stop" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">void</span></code></dt>
+<dd>no arguments</dd>
+</dl>
+<dl class="function">
+<dt id="c.memory_region_dispatch_read">
+MemTxResult <code class="descname">memory_region_dispatch_read</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, hwaddr<em>&nbsp;addr</em>, uint64_t *<em>&nbsp;pval</em>, unsigned<em>&nbsp;size</em>, MemTxAttrs<em>&nbsp;attrs</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_dispatch_read" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>#MemoryRegion to access</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">addr</span></code></dt>
+<dd>address within that region</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">*</span> <span class="pre">pval</span></code></dt>
+<dd>pointer to uint64_t which the data is written to</dd>
+<dt><code class="docutils literal"><span class="pre">unsigned</span> <span class="pre">size</span></code></dt>
+<dd>size of the access in bytes</dd>
+<dt><code class="docutils literal"><span class="pre">MemTxAttrs</span> <span class="pre">attrs</span></code></dt>
+<dd>memory transaction attributes to use for the access</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>MemoryRegion.</p>
+<dl class="function">
+<dt id="c.memory_region_dispatch_write">
+MemTxResult <code class="descname">memory_region_dispatch_write</code><span class="sig-paren">(</span>MemoryRegion *<em>&nbsp;mr</em>, hwaddr<em>&nbsp;addr</em>, uint64_t<em>&nbsp;data</em>, unsigned<em>&nbsp;size</em>, MemTxAttrs<em>&nbsp;attrs</em><span class="sig-paren">)</span><a class="headerlink" href="#c.memory_region_dispatch_write" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">mr</span></code></dt>
+<dd>#MemoryRegion to access</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">addr</span></code></dt>
+<dd>address within that region</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">data</span></code></dt>
+<dd>data to write</dd>
+<dt><code class="docutils literal"><span class="pre">unsigned</span> <span class="pre">size</span></code></dt>
+<dd>size of the access in bytes</dd>
+<dt><code class="docutils literal"><span class="pre">MemTxAttrs</span> <span class="pre">attrs</span></code></dt>
+<dd>memory transaction attributes to use for the access</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>MemoryRegion.</p>
+<dl class="function">
+<dt id="c.address_space_init">
+void <code class="descname">address_space_init</code><span class="sig-paren">(</span><a class="reference internal" href="#c.AddressSpace" title="AddressSpace">AddressSpace</a> *<em>&nbsp;as</em>, MemoryRegion *<em>&nbsp;root</em>, const char *<em>&nbsp;name</em><span class="sig-paren">)</span><a class="headerlink" href="#c.address_space_init" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">AddressSpace</span> <span class="pre">*</span> <span class="pre">as</span></code></dt>
+<dd>an uninitialized #AddressSpace</dd>
+<dt><code class="docutils literal"><span class="pre">MemoryRegion</span> <span class="pre">*</span> <span class="pre">root</span></code></dt>
+<dd>a #MemoryRegion that routes addresses for the address space</dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">name</span></code></dt>
+<dd>an address space name.  The name is only used for debugging
+output.</dd>
+</dl>
+<dl class="function">
+<dt id="c.address_space_destroy">
+void <code class="descname">address_space_destroy</code><span class="sig-paren">(</span><a class="reference internal" href="#c.AddressSpace" title="AddressSpace">AddressSpace</a> *<em>&nbsp;as</em><span class="sig-paren">)</span><a class="headerlink" href="#c.address_space_destroy" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">AddressSpace</span> <span class="pre">*</span> <span class="pre">as</span></code></dt>
+<dd>address space to be destroyed</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Releases all resources associated with an address space.  After an address space
+is destroyed, its root memory region (given by address_space_init()) may be destroyed
+as well.</p>
+<dl class="function">
+<dt id="c.address_space_remove_listeners">
+void <code class="descname">address_space_remove_listeners</code><span class="sig-paren">(</span><a class="reference internal" href="#c.AddressSpace" title="AddressSpace">AddressSpace</a> *<em>&nbsp;as</em><span class="sig-paren">)</span><a class="headerlink" href="#c.address_space_remove_listeners" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">AddressSpace</span> <span class="pre">*</span> <span class="pre">as</span></code></dt>
+<dd>an initialized #AddressSpace</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Removes all callbacks previously registered with memory_listener_register()
+for <strong>as</strong>.</p>
+<dl class="function">
+<dt id="c.address_space_rw">
+MemTxResult <code class="descname">address_space_rw</code><span class="sig-paren">(</span><a class="reference internal" href="#c.AddressSpace" title="AddressSpace">AddressSpace</a> *<em>&nbsp;as</em>, hwaddr<em>&nbsp;addr</em>, MemTxAttrs<em>&nbsp;attrs</em>, uint8_t *<em>&nbsp;buf</em>, hwaddr<em>&nbsp;len</em>, <a class="reference internal" href="qom/object_interfaces.html#c.bool" title="bool">bool</a><em>&nbsp;is_write</em><span class="sig-paren">)</span><a class="headerlink" href="#c.address_space_rw" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">AddressSpace</span> <span class="pre">*</span> <span class="pre">as</span></code></dt>
+<dd>#AddressSpace to be accessed</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">addr</span></code></dt>
+<dd>address within that address space</dd>
+<dt><code class="docutils literal"><span class="pre">MemTxAttrs</span> <span class="pre">attrs</span></code></dt>
+<dd>memory transaction attributes</dd>
+<dt><code class="docutils literal"><span class="pre">uint8_t</span> <span class="pre">*</span> <span class="pre">buf</span></code></dt>
+<dd>buffer with the data transferred</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">len</span></code></dt>
+<dd>the number of bytes to read or write</dd>
+<dt><code class="docutils literal"><span class="pre">bool</span> <span class="pre">is_write</span></code></dt>
+<dd>indicates the transfer direction</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Return a MemTxResult indicating whether the operation succeeded
+or failed (eg unassigned memory, device rejected the transaction,
+IOMMU fault).</p>
+<dl class="function">
+<dt id="c.address_space_write">
+MemTxResult <code class="descname">address_space_write</code><span class="sig-paren">(</span><a class="reference internal" href="#c.AddressSpace" title="AddressSpace">AddressSpace</a> *<em>&nbsp;as</em>, hwaddr<em>&nbsp;addr</em>, MemTxAttrs<em>&nbsp;attrs</em>, const uint8_t *<em>&nbsp;buf</em>, hwaddr<em>&nbsp;len</em><span class="sig-paren">)</span><a class="headerlink" href="#c.address_space_write" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">AddressSpace</span> <span class="pre">*</span> <span class="pre">as</span></code></dt>
+<dd>#AddressSpace to be accessed</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">addr</span></code></dt>
+<dd>address within that address space</dd>
+<dt><code class="docutils literal"><span class="pre">MemTxAttrs</span> <span class="pre">attrs</span></code></dt>
+<dd>memory transaction attributes</dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">uint8_t</span> <span class="pre">*</span> <span class="pre">buf</span></code></dt>
+<dd>buffer with the data transferred</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">len</span></code></dt>
+<dd>the number of bytes to write</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Return a MemTxResult indicating whether the operation succeeded
+or failed (eg unassigned memory, device rejected the transaction,
+IOMMU fault).</p>
+<dl class="function">
+<dt id="c.address_space_write_rom">
+MemTxResult <code class="descname">address_space_write_rom</code><span class="sig-paren">(</span><a class="reference internal" href="#c.AddressSpace" title="AddressSpace">AddressSpace</a> *<em>&nbsp;as</em>, hwaddr<em>&nbsp;addr</em>, MemTxAttrs<em>&nbsp;attrs</em>, const uint8_t *<em>&nbsp;buf</em>, hwaddr<em>&nbsp;len</em><span class="sig-paren">)</span><a class="headerlink" href="#c.address_space_write_rom" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">AddressSpace</span> <span class="pre">*</span> <span class="pre">as</span></code></dt>
+<dd>#AddressSpace to be accessed</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">addr</span></code></dt>
+<dd>address within that address space</dd>
+<dt><code class="docutils literal"><span class="pre">MemTxAttrs</span> <span class="pre">attrs</span></code></dt>
+<dd>memory transaction attributes</dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">uint8_t</span> <span class="pre">*</span> <span class="pre">buf</span></code></dt>
+<dd>buffer with the data transferred</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">len</span></code></dt>
+<dd>the number of bytes to write</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>This function writes to the specified address space, but will
+write data to both ROM and RAM. This is used for non-guest
+writes like writes from the gdb debug stub or initial loading
+of ROM contents.</p>
+<p>Note that portions of the write which attempt to write data to
+a device will be silently ignored &#8211; only real RAM and ROM will
+be written to.</p>
+<p>Return a MemTxResult indicating whether the operation succeeded
+or failed (eg unassigned memory, device rejected the transaction,
+IOMMU fault).</p>
+<dl class="function">
+<dt id="c.address_space_cache_invalidate">
+void <code class="descname">address_space_cache_invalidate</code><span class="sig-paren">(</span>MemoryRegionCache *<em>&nbsp;cache</em>, hwaddr<em>&nbsp;addr</em>, hwaddr<em>&nbsp;access_len</em><span class="sig-paren">)</span><a class="headerlink" href="#c.address_space_cache_invalidate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegionCache</span> <span class="pre">*</span> <span class="pre">cache</span></code></dt>
+<dd>The #MemoryRegionCache to operate on.</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">addr</span></code></dt>
+<dd>The first physical address that was written, relative to the
+address that was passed to <strong>address_space_cache_init</strong>.</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">access_len</span></code></dt>
+<dd>The number of bytes that were written starting at <strong>addr</strong>.</dd>
+</dl>
+<dl class="function">
+<dt id="c.address_space_cache_destroy">
+void <code class="descname">address_space_cache_destroy</code><span class="sig-paren">(</span>MemoryRegionCache *<em>&nbsp;cache</em><span class="sig-paren">)</span><a class="headerlink" href="#c.address_space_cache_destroy" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegionCache</span> <span class="pre">*</span> <span class="pre">cache</span></code></dt>
+<dd>The #MemoryRegionCache whose memory should be released.</dd>
+</dl>
+<dl class="function">
+<dt id="c.address_space_read">
+MemTxResult <code class="descname">address_space_read</code><span class="sig-paren">(</span><a class="reference internal" href="#c.AddressSpace" title="AddressSpace">AddressSpace</a> *<em>&nbsp;as</em>, hwaddr<em>&nbsp;addr</em>, MemTxAttrs<em>&nbsp;attrs</em>, uint8_t *<em>&nbsp;buf</em>, hwaddr<em>&nbsp;len</em><span class="sig-paren">)</span><a class="headerlink" href="#c.address_space_read" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">AddressSpace</span> <span class="pre">*</span> <span class="pre">as</span></code></dt>
+<dd>#AddressSpace to be accessed</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">addr</span></code></dt>
+<dd>address within that address space</dd>
+<dt><code class="docutils literal"><span class="pre">MemTxAttrs</span> <span class="pre">attrs</span></code></dt>
+<dd>memory transaction attributes</dd>
+<dt><code class="docutils literal"><span class="pre">uint8_t</span> <span class="pre">*</span> <span class="pre">buf</span></code></dt>
+<dd>buffer with the data transferred</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">len</span></code></dt>
+<dd>length of the buffer</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Return a MemTxResult indicating whether the operation succeeded
+or failed (eg unassigned memory, device rejected the transaction,
+IOMMU fault).  Called within RCU critical section.</p>
+<dl class="function">
+<dt id="c.address_space_read_cached">
+void <code class="descname">address_space_read_cached</code><span class="sig-paren">(</span>MemoryRegionCache *<em>&nbsp;cache</em>, hwaddr<em>&nbsp;addr</em>, void *<em>&nbsp;buf</em>, hwaddr<em>&nbsp;len</em><span class="sig-paren">)</span><a class="headerlink" href="#c.address_space_read_cached" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegionCache</span> <span class="pre">*</span> <span class="pre">cache</span></code></dt>
+<dd>Cached region to be addressed</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">addr</span></code></dt>
+<dd>address relative to the base of the RAM region</dd>
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">buf</span></code></dt>
+<dd>buffer with the data transferred</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">len</span></code></dt>
+<dd>length of the data transferred</dd>
+</dl>
+<dl class="function">
+<dt id="c.address_space_write_cached">
+void <code class="descname">address_space_write_cached</code><span class="sig-paren">(</span>MemoryRegionCache *<em>&nbsp;cache</em>, hwaddr<em>&nbsp;addr</em>, void *<em>&nbsp;buf</em>, hwaddr<em>&nbsp;len</em><span class="sig-paren">)</span><a class="headerlink" href="#c.address_space_write_cached" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">MemoryRegionCache</span> <span class="pre">*</span> <span class="pre">cache</span></code></dt>
+<dd>Cached region to be addressed</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">addr</span></code></dt>
+<dd>address relative to the base of the RAM region</dd>
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">buf</span></code></dt>
+<dd>buffer with the data transferred</dd>
+<dt><code class="docutils literal"><span class="pre">hwaddr</span> <span class="pre">len</span></code></dt>
+<dd>length of the data transferred</dd>
+</dl>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">QEMU</a></h1>
+
+
+
+<p class="blurb">Developers Guide</p>
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=&repo=&type=watch&count=true&size=large"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="decodetree.html">Decodetree Specification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kconfig.html">QEMU and Kconfig</a></li>
+<li class="toctree-l1"><a class="reference internal" href="loads-stores.html">Load and Store APIs</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="">The memory API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#types-of-regions">Types of regions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#migration">Migration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#region-names">Region names</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#region-lifecycle">Region lifecycle</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#overlapping-regions-and-priority">Overlapping regions and priority</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#visibility">Visibility</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#example-memory-map">Example memory map</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#mmio-operations">MMIO Operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#detailed-api-documentation">Detailed API documentation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="migration.html">Migration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="qapi.html">QAPI headers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="qemu.html">QEMU headers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="qom.html">QOM headers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stable-process.html">QEMU and the stable process</a></li>
+<li class="toctree-l1"><a class="reference internal" href="secure-coding-practices.html">Secure Coding Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tcg.html">Translator Internals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing in QEMU</a></li>
+</ul>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, The QEMU Project Developers.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

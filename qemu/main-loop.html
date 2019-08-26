@@ -1,0 +1,498 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>main-loop header &mdash; QEMU 4.1.50 (v4.0.0-470-g250533e6-dirty) documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '4.1.50 (v4.0.0-470-g250533e6-dirty)',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  false
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="QEMU 4.1.50 (v4.0.0-470-g250533e6-dirty) documentation" href="../index.html" />
+    <link rel="up" title="QEMU headers" href="../qemu.html" />
+    <link rel="next" title="memfd header" href="memfd.html" />
+    <link rel="prev" title="log header" href="log.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="main-loop-header">
+<h1>main-loop header<a class="headerlink" href="#main-loop-header" title="Permalink to this headline">¶</a></h1>
+<p>The documentation of QEMU&#8217;s <code class="docutils literal"><span class="pre">qemu/main-loop.h</span></code> header.</p>
+<dl class="function">
+<dt id="c.qemu_init_main_loop">
+int <code class="descname">qemu_init_main_loop</code><span class="sig-paren">(</span>Error **<em>&nbsp;errp</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_init_main_loop" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">Error</span> <span class="pre">**</span> <span class="pre">errp</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>This includes setting up signal handlers.  It should be called before
+any other threads are created.  In addition, threads other than the
+main one should block signals that are trapped by the main loop.
+For simplicity, you can consider these signals to be safe: SIGUSR1,
+SIGUSR2, thread signals (SIGFPE, SIGILL, SIGSEGV, SIGBUS) and real-time
+signals if available.  Remember that Windows in practice does not have
+signals, though.</p>
+<p>In the case of QEMU tools, this will also start/initialize timers.</p>
+<dl class="function">
+<dt id="c.main_loop_wait">
+void <code class="descname">main_loop_wait</code><span class="sig-paren">(</span>int<em>&nbsp;nonblocking</em><span class="sig-paren">)</span><a class="headerlink" href="#c.main_loop_wait" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">int</span> <span class="pre">nonblocking</span></code></dt>
+<dd>Whether the caller should block until an event occurs.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>If <strong>nonblocking</strong> is true, poll for events, otherwise suspend until
+one actually occurs.  The main loop usually consists of a loop that
+repeatedly calls main_loop_wait(false).</p>
+<p>Main loop services include file descriptor callbacks, bottom halves
+and timers (defined in qemu-timer.h).  Bottom halves are similar to timers
+that execute immediately, but have a lower overhead and scheduling them
+is wait-free, thread-safe and signal-safe.</p>
+<p>It is sometimes useful to put a whole program in a coroutine.  In this
+case, the coroutine actually should be started from within the main loop,
+so that the main loop can run whenever the coroutine yields.  To do this,
+you can use a bottom half to enter the coroutine as soon as the main loop
+starts:</p>
+<blockquote>
+<div><dl class="docutils">
+<dt>void enter_co_bh(void <a href="#id1"><span class="problematic" id="id2">*</span></a>opaque) {</dt>
+<dd>QEMUCoroutine <a href="#id3"><span class="problematic" id="id4">*</span></a>co = opaque;
+qemu_coroutine_enter(co);</dd>
+</dl>
+<p>}</p>
+<p>...
+QEMUCoroutine <a href="#id5"><span class="problematic" id="id6">*</span></a>co = qemu_coroutine_create(coroutine_entry, NULL);
+QEMUBH <a href="#id7"><span class="problematic" id="id8">*</span></a>start_bh = qemu_bh_new(enter_co_bh, co);
+qemu_bh_schedule(start_bh);
+while (...) {</p>
+<blockquote>
+<div>main_loop_wait(false);</div></blockquote>
+<p>}</p>
+</div></blockquote>
+<p>(In the future we may provide a wrapper for this).</p>
+<dl class="function">
+<dt id="c.qemu_get_aio_context">
+AioContext * <code class="descname">qemu_get_aio_context</code><span class="sig-paren">(</span>void<span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_get_aio_context" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">void</span></code></dt>
+<dd>no arguments</dd>
+</dl>
+<dl class="function">
+<dt id="c.qemu_notify_event">
+void <code class="descname">qemu_notify_event</code><span class="sig-paren">(</span>void<span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_notify_event" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">void</span></code></dt>
+<dd>no arguments</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Similar to signaling a condition variable, qemu_notify_event forces
+main_loop_wait to look at pending events and exit.  The caller of
+main_loop_wait will usually call it again very soon, so qemu_notify_event
+also has the side effect of recalculating the sets of file descriptors
+that the main loop waits for.</p>
+<p>Calling qemu_notify_event is rarely necessary, because main loop
+services (bottom halves and timers) call it themselves.</p>
+<dl class="function">
+<dt id="c.qemu_add_polling_cb">
+int <code class="descname">qemu_add_polling_cb</code><span class="sig-paren">(</span>PollingFunc *<em>&nbsp;func</em>, void *<em>&nbsp;opaque</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_add_polling_cb" title="Permalink to this definition">¶</a></dt>
+<dd><p>specific polling callback</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">PollingFunc</span> <span class="pre">*</span> <span class="pre">func</span></code></dt>
+<dd>The function that does the polling, and returns 1 to force
+immediate completion of main_loop_wait.</dd>
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">opaque</span></code></dt>
+<dd>A pointer-size value that is passed to <strong>func</strong>.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Currently, under Windows some events are polled rather than waited for.
+Polling callbacks do not ensure that <strong>func</strong> is called timely, because
+the main loop might wait for an arbitrarily long time.  If possible,
+you should instead create a separate thread that does a blocking poll
+and set a Win32 event object.  The event can then be passed to
+qemu_add_wait_object.</p>
+<p>Polling callbacks really have nothing Windows specific in them, but
+as they are a hack and are currently not necessary under POSIX systems,
+they are only available when QEMU is running under Windows.</p>
+<dl class="function">
+<dt id="c.qemu_del_polling_cb">
+void <code class="descname">qemu_del_polling_cb</code><span class="sig-paren">(</span>PollingFunc *<em>&nbsp;func</em>, void *<em>&nbsp;opaque</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_del_polling_cb" title="Permalink to this definition">¶</a></dt>
+<dd><p>specific polling callback</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">PollingFunc</span> <span class="pre">*</span> <span class="pre">func</span></code></dt>
+<dd>The function that was passed to qemu_add_polling_cb.</dd>
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">opaque</span></code></dt>
+<dd>A pointer-size value that was passed to qemu_add_polling_cb.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>This function removes a callback that was registered with
+qemu_add_polling_cb.</p>
+<dl class="function">
+<dt id="c.qemu_add_wait_object">
+int <code class="descname">qemu_add_wait_object</code><span class="sig-paren">(</span>HANDLE<em>&nbsp;handle</em>, WaitObjectFunc *<em>&nbsp;func</em>, void *<em>&nbsp;opaque</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_add_wait_object" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">HANDLE</span> <span class="pre">handle</span></code></dt>
+<dd>The Windows handle to be observed.</dd>
+<dt><code class="docutils literal"><span class="pre">WaitObjectFunc</span> <span class="pre">*</span> <span class="pre">func</span></code></dt>
+<dd>A function to be called when <strong>handle</strong> is in a signaled state.</dd>
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">opaque</span></code></dt>
+<dd>A pointer-size value that is passed to <strong>func</strong>.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Under Windows, the iohandler mechanism can only be used with sockets.
+QEMU must use the WaitForMultipleObjects API to wait on other handles.
+This function registers a #HANDLE with QEMU, so that it will be included
+in the main loop&#8217;s calls to WaitForMultipleObjects.  When the handle
+is in a signaled state, QEMU will call <strong>func</strong>.</p>
+<dl class="function">
+<dt id="c.qemu_del_wait_object">
+void <code class="descname">qemu_del_wait_object</code><span class="sig-paren">(</span>HANDLE<em>&nbsp;handle</em>, WaitObjectFunc *<em>&nbsp;func</em>, void *<em>&nbsp;opaque</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_del_wait_object" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">HANDLE</span> <span class="pre">handle</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal"><span class="pre">WaitObjectFunc</span> <span class="pre">*</span> <span class="pre">func</span></code></dt>
+<dd>The function that was passed to qemu_add_wait_object.</dd>
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">opaque</span></code></dt>
+<dd>A pointer-size value that was passed to qemu_add_wait_object.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>This function removes a callback that was registered with
+qemu_add_wait_object.</p>
+<dl class="function">
+<dt id="c.IOCanReadHandler">
+typedef int <code class="descname">IOCanReadHandler</code><span class="sig-paren">(</span>void *<em>&nbsp;opaque</em><span class="sig-paren">)</span><a class="headerlink" href="#c.IOCanReadHandler" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">opaque</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>This function reports how many bytes #IOReadHandler is prepared to accept.
+#IOReadHandler may be invoked with up to this number of bytes.  If this
+function returns 0 then #IOReadHandler is not invoked.</p>
+<p>This function is typically called from an event loop.  If the number of
+bytes changes outside the event loop (e.g. because a vcpu thread drained the
+buffer), then it is necessary to kick the event loop so that this function
+is called again.  aio_notify() or qemu_notify_event() can be used to kick
+the event loop.</p>
+<dl class="function">
+<dt id="c.qemu_set_fd_handler">
+void <code class="descname">qemu_set_fd_handler</code><span class="sig-paren">(</span>int<em>&nbsp;fd</em>, IOHandler *<em>&nbsp;fd_read</em>, IOHandler *<em>&nbsp;fd_write</em>, void *<em>&nbsp;opaque</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_set_fd_handler" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">int</span> <span class="pre">fd</span></code></dt>
+<dd>The file descriptor to be observed.  Under Windows it must be
+a #SOCKET.</dd>
+<dt><code class="docutils literal"><span class="pre">IOHandler</span> <span class="pre">*</span> <span class="pre">fd_read</span></code></dt>
+<dd>A level-triggered callback that is fired if <strong>fd</strong> is readable
+at the beginning of a main loop iteration, or if it becomes readable
+during one.</dd>
+<dt><code class="docutils literal"><span class="pre">IOHandler</span> <span class="pre">*</span> <span class="pre">fd_write</span></code></dt>
+<dd>A level-triggered callback that is fired when <strong>fd</strong> is writable
+at the beginning of a main loop iteration, or if it becomes writable
+during one.</dd>
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">opaque</span></code></dt>
+<dd>A pointer-sized value that is passed to <strong>fd_read</strong> and <strong>fd_write</strong>.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>This function tells the main loop to wake up whenever one of the
+following conditions is true:</p>
+<ol class="arabic simple">
+<li>if <strong>fd_write</strong> is not <code class="docutils literal"><span class="pre">NULL</span></code>, when the file descriptor is writable;</li>
+<li>if <strong>fd_read</strong> is not <code class="docutils literal"><span class="pre">NULL</span></code>, when the file descriptor is readable.</li>
+</ol>
+<p>The callbacks that are set up by qemu_set_fd_handler are level-triggered.
+If <strong>fd_read</strong> does not read from <strong>fd</strong>, or <strong>fd_write</strong> does not write to <strong>fd</strong>
+until its buffers are full, they will be called again on the next
+iteration.</p>
+<dl class="function">
+<dt id="c.event_notifier_set_handler">
+void <code class="descname">event_notifier_set_handler</code><span class="sig-paren">(</span>EventNotifier *<em>&nbsp;e</em>, EventNotifierHandler *<em>&nbsp;handler</em><span class="sig-paren">)</span><a class="headerlink" href="#c.event_notifier_set_handler" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">EventNotifier</span> <span class="pre">*</span> <span class="pre">e</span></code></dt>
+<dd>The #EventNotifier to be observed.</dd>
+<dt><code class="docutils literal"><span class="pre">EventNotifierHandler</span> <span class="pre">*</span> <span class="pre">handler</span></code></dt>
+<dd>A level-triggered callback that is fired when <strong>e</strong>
+has been set.  <strong>e</strong> is passed to it as a parameter.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>This function tells the main loop to wake up whenever the
+#EventNotifier was set.</p>
+<dl class="function">
+<dt id="c.qemu_add_child_watch">
+int <code class="descname">qemu_add_child_watch</code><span class="sig-paren">(</span>pid_t<em>&nbsp;pid</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_add_child_watch" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">pid_t</span> <span class="pre">pid</span></code></dt>
+<dd>The pid that QEMU should observe.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Under POSIX systems, a parent process must read the exit status of
+its child processes using waitpid, or the operating system will not
+free some of the resources attached to that process.</p>
+<p>This function directs the QEMU main loop to observe a child process
+and call waitpid as soon as it exits; the watch is then removed
+automatically.  It is useful whenever QEMU forks a child process
+but will find out about its termination by other means such as a
+&#8220;broken pipe&#8221;.</p>
+<dl class="function">
+<dt id="c.qemu_mutex_iothread_locked">
+<a class="reference internal" href="../qom/object_interfaces.html#c.bool" title="bool">bool</a> <code class="descname">qemu_mutex_iothread_locked</code><span class="sig-paren">(</span>void<span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_mutex_iothread_locked" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">void</span></code></dt>
+<dd>no arguments</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>The main loop mutex is the coarsest lock in QEMU, and as such it
+must always be taken outside other locks.  This function helps
+functions take different paths depending on whether the current
+thread is running within the main loop mutex.</p>
+<dl class="function">
+<dt id="c.qemu_mutex_lock_iothread">
+<code class="descname">qemu_mutex_lock_iothread</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_mutex_lock_iothread" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<p><strong>Description</strong></p>
+<p>This function locks the main loop mutex.  The mutex is taken by
+main() in vl.c and always taken except while waiting on
+external events (such as with select).  The mutex should be taken
+by threads other than the main loop thread when calling
+qemu_bh_new(), qemu_set_fd_handler() and basically all other
+functions documented in this file.</p>
+<p><strong>NOTE</strong></p>
+<p>tools currently are single-threaded and qemu_mutex_lock_iothread
+is a no-op there.</p>
+<dl class="function">
+<dt id="c.qemu_mutex_unlock_iothread">
+void <code class="descname">qemu_mutex_unlock_iothread</code><span class="sig-paren">(</span>void<span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_mutex_unlock_iothread" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">void</span></code></dt>
+<dd>no arguments</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>This function unlocks the main loop mutex.  The mutex is taken by
+main() in vl.c and always taken except while waiting on
+external events (such as with select).  The mutex should be unlocked
+as soon as possible by threads other than the main loop thread,
+because it prevents the main loop from processing callbacks,
+including timers and bottom halves.</p>
+<p><strong>NOTE</strong></p>
+<p>tools currently are single-threaded and qemu_mutex_unlock_iothread
+is a no-op there.</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">QEMU</a></h1>
+
+
+
+<p class="blurb">Developers Guide</p>
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=&repo=&type=watch&count=true&size=large"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../decodetree.html">Decodetree Specification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../kconfig.html">QEMU and Kconfig</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../loads-stores.html">Load and Store APIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../memory.html">The memory API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../migration.html">Migration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../qapi.html">QAPI headers</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../qemu.html">QEMU headers</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="bitops.html">Bitwise operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="coroutine.html">QEMU coroutine implementation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="atomic128.html">atomic128 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="atomic.html">atomic header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="base64.html">base64 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bcd.html">bcd header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bitmap.html">bitmap header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bswap.html">bswap header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="buffer.html">buffer header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="compiler.html">compiler header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="config-file.html">config-file header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="coroutine_int.html">coroutine_int header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cpuid.html">cpuid header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="crc32c.html">crc32c header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ctype.html">ctype header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cutils.html">cutils header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="drm.html">drm header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="envlist.html">envlist header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="error-report.html">error-report header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="event_notifier.html">event_notifier header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fifo32.html">fifo32 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fifo8.html">fifo8 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="filemonitor.html">filemonitor header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="futex.html">futex header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guest-random.html">guest-random header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="hbitmap.html">hbitmap header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="help_option.html">help_option header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="host-utils.html">host-utils header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="id.html">id header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="int128.html">int128 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="iova-tree.html">iova-tree header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="iov.html">iov header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jhash.html">jhash header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="job.html">job header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="lockable.html">lockable header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="log-for-trace.html">log-for-trace header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="log.html">log header</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="">main-loop header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="memfd.html">memfd header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mmap-alloc.html">mmap-alloc header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="module.html">module header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notify.html">notify header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="option.html">option header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="option_int.html">option_int header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="osdep.html">osdep header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="path.html">path header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pmem.html">pmem header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="processor.html">processor header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qdist.html">qdist header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qemu-print.html">qemu-print header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qht.html">qht header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qsp.html">qsp header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="queue.html">queue header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="range.html">range header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ratelimit.html">ratelimit header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rcu.html">rcu header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rcu_queue.html">rcu_queue header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="readline.html">readline header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="seqlock.html">seqlock header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sockets.html">sockets header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stats64.html">stats64 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sys_membarrier.html">sys_membarrier header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="systemd.html">systemd header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="thread.html">thread header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="thread-posix.html">thread-posix header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="thread-win32.html">thread-win32 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="throttle.html">throttle header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="throttle-options.html">throttle-options header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="timed-average.html">timed-average header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="timer.html">timer header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="typedefs.html">typedefs header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unicode.html">unicode header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="units.html">units header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="uri.html">uri header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="uuid.html">uuid header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="vfio-helpers.html">vfio-helpers header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="win_dump_defs.html">win_dump_defs header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="xattr.html">xattr header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="xxhash.html">xxhash header</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../qom.html">QOM headers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../stable-process.html">QEMU and the stable process</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../secure-coding-practices.html">Secure Coding Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tcg.html">Translator Internals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testing.html">Testing in QEMU</a></li>
+</ul>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, The QEMU Project Developers.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

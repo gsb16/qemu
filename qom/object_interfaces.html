@@ -1,0 +1,260 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>QEMU Object Model interfaces &mdash; QEMU 4.1.50 (v4.0.0-470-g250533e6-dirty) documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '4.1.50 (v4.0.0-470-g250533e6-dirty)',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  false
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="QEMU 4.1.50 (v4.0.0-470-g250533e6-dirty) documentation" href="../index.html" />
+    <link rel="up" title="QOM headers" href="../qom.html" />
+    <link rel="next" title="QObject wrappers" href="qom-qobject.html" />
+    <link rel="prev" title="QEMU Object Model" href="object.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="qemu-object-model-interfaces">
+<h1>QEMU Object Model interfaces<a class="headerlink" href="#qemu-object-model-interfaces" title="Permalink to this headline">¶</a></h1>
+<p>The documentation of QEMU&#8217;s Object Model interfaces defined in <code class="docutils literal"><span class="pre">qom/object_interfaces.h</span></code> .</p>
+<dl class="function">
+<dt id="c.user_creatable_complete">
+void <code class="descname">user_creatable_complete</code><span class="sig-paren">(</span>UserCreatable *<em>&nbsp;uc</em>, Error **<em>&nbsp;errp</em><span class="sig-paren">)</span><a class="headerlink" href="#c.user_creatable_complete" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">UserCreatable</span> <span class="pre">*</span> <span class="pre">uc</span></code></dt>
+<dd>the user-creatable object whose complete() method is called if defined</dd>
+<dt><code class="docutils literal"><span class="pre">Error</span> <span class="pre">**</span> <span class="pre">errp</span></code></dt>
+<dd>if an error occurs, a pointer to an area to store the error</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Wrapper to call complete() method if one of types it&#8217;s inherited
+from implements USER_CREATABLE interface, otherwise the call does
+nothing.</p>
+<dl class="function">
+<dt id="c.user_creatable_can_be_deleted">
+<a class="reference internal" href="#c.bool" title="bool">bool</a> <code class="descname">user_creatable_can_be_deleted</code><span class="sig-paren">(</span>UserCreatable *<em>&nbsp;uc</em><span class="sig-paren">)</span><a class="headerlink" href="#c.user_creatable_can_be_deleted" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">UserCreatable</span> <span class="pre">*</span> <span class="pre">uc</span></code></dt>
+<dd>the object whose can_be_deleted() method is called if implemented</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Wrapper to call can_be_deleted() method if one of types it&#8217;s inherited
+from implements USER_CREATABLE interface.</p>
+<dl class="function">
+<dt id="c.user_creatable_add_type">
+Object * <code class="descname">user_creatable_add_type</code><span class="sig-paren">(</span>const char *<em>&nbsp;type</em>, const char *<em>&nbsp;id</em>, const QDict *<em>&nbsp;qdict</em>, Visitor *<em>&nbsp;v</em>, Error **<em>&nbsp;errp</em><span class="sig-paren">)</span><a class="headerlink" href="#c.user_creatable_add_type" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">type</span></code></dt>
+<dd>the object type name</dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">id</span></code></dt>
+<dd>the unique ID for the object</dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">QDict</span> <span class="pre">*</span> <span class="pre">qdict</span></code></dt>
+<dd>the object properties</dd>
+<dt><code class="docutils literal"><span class="pre">Visitor</span> <span class="pre">*</span> <span class="pre">v</span></code></dt>
+<dd>the visitor</dd>
+<dt><code class="docutils literal"><span class="pre">Error</span> <span class="pre">**</span> <span class="pre">errp</span></code></dt>
+<dd>if an error occurs, a pointer to an area to store the error</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Create an instance of the user creatable object <strong>type</strong>, placing
+it in the object composition tree with name <strong>id</strong>, initializing
+it with properties from <strong>qdict</strong></p>
+<p><strong>Return</strong></p>
+<p>the newly created object or NULL on error</p>
+<dl class="function">
+<dt id="c.user_creatable_add_opts">
+Object * <code class="descname">user_creatable_add_opts</code><span class="sig-paren">(</span>QemuOpts *<em>&nbsp;opts</em>, Error **<em>&nbsp;errp</em><span class="sig-paren">)</span><a class="headerlink" href="#c.user_creatable_add_opts" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QemuOpts</span> <span class="pre">*</span> <span class="pre">opts</span></code></dt>
+<dd>the object definition</dd>
+<dt><code class="docutils literal"><span class="pre">Error</span> <span class="pre">**</span> <span class="pre">errp</span></code></dt>
+<dd>if an error occurs, a pointer to an area to store the error</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Create an instance of the user creatable object whose type
+is defined in <strong>opts</strong> by the &#8216;qom-type&#8217; option, placing it
+in the object composition tree with name provided by the
+&#8216;id&#8217; field. The remaining options in <strong>opts</strong> are used to
+initialize the object properties.</p>
+<p><strong>Return</strong></p>
+<p>the newly created object or NULL on error</p>
+<dl class="function">
+<dt id="c.bool">
+typedef <code class="descname">bool</code><span class="sig-paren">(</span>*<em>&nbsp;user_creatable_add_opts_predicate</em><span class="sig-paren">)</span><a class="headerlink" href="#c.bool" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt>`` * user_creatable_add_opts_predicate``</dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>A callback function to determine whether an object
+of type <strong>type</strong> should be created. Instances of this
+callback should be passed to user_creatable_add_opts_foreach</p>
+<dl class="function">
+<dt id="c.user_creatable_add_opts_foreach">
+int <code class="descname">user_creatable_add_opts_foreach</code><span class="sig-paren">(</span>void *<em>&nbsp;opaque</em>, QemuOpts *<em>&nbsp;opts</em>, Error **<em>&nbsp;errp</em><span class="sig-paren">)</span><a class="headerlink" href="#c.user_creatable_add_opts_foreach" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">opaque</span></code></dt>
+<dd>a user_creatable_add_opts_predicate callback or NULL</dd>
+<dt><code class="docutils literal"><span class="pre">QemuOpts</span> <span class="pre">*</span> <span class="pre">opts</span></code></dt>
+<dd>options to create</dd>
+<dt><code class="docutils literal"><span class="pre">Error</span> <span class="pre">**</span> <span class="pre">errp</span></code></dt>
+<dd>unused</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>An iterator callback to be used in conjunction with
+the qemu_opts_foreach() method for creating a list of
+objects from a set of QemuOpts</p>
+<p>The <strong>opaque</strong> parameter can be passed a user_creatable_add_opts_predicate
+callback to filter which types of object are created during iteration.
+When it fails, report the error.</p>
+<p><strong>Return</strong></p>
+<p>0 on success, -1 when an error was reported.</p>
+<dl class="function">
+<dt id="c.user_creatable_del">
+void <code class="descname">user_creatable_del</code><span class="sig-paren">(</span>const char *<em>&nbsp;id</em>, Error **<em>&nbsp;errp</em><span class="sig-paren">)</span><a class="headerlink" href="#c.user_creatable_del" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">id</span></code></dt>
+<dd>the unique ID for the object</dd>
+<dt><code class="docutils literal"><span class="pre">Error</span> <span class="pre">**</span> <span class="pre">errp</span></code></dt>
+<dd>if an error occurs, a pointer to an area to store the error</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Delete an instance of the user creatable object identified
+by <strong>id</strong>.</p>
+<dl class="function">
+<dt id="c.user_creatable_cleanup">
+void <code class="descname">user_creatable_cleanup</code><span class="sig-paren">(</span>void<span class="sig-paren">)</span><a class="headerlink" href="#c.user_creatable_cleanup" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">void</span></code></dt>
+<dd>no arguments</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Delete all user-creatable objects and the user-creatable
+objects container.</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">QEMU</a></h1>
+
+
+
+<p class="blurb">Developers Guide</p>
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=&repo=&type=watch&count=true&size=large"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../decodetree.html">Decodetree Specification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../kconfig.html">QEMU and Kconfig</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../loads-stores.html">Load and Store APIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../memory.html">The memory API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../migration.html">Migration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../qapi.html">QAPI headers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../qemu.html">QEMU headers</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../qom.html">QOM headers</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="cpu.html">QEMU CPU header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="object.html">QEMU Object Model</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="">QEMU Object Model interfaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qom-qobject.html">QObject wrappers</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../stable-process.html">QEMU and the stable process</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../secure-coding-practices.html">Secure Coding Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tcg.html">Translator Internals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testing.html">Testing in QEMU</a></li>
+</ul>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, The QEMU Project Developers.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

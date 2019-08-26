@@ -1,0 +1,180 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>QEMU and the stable process &mdash; QEMU 4.1.50 (v4.0.0-470-g250533e6-dirty) documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '4.1.50 (v4.0.0-470-g250533e6-dirty)',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  false
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="QEMU 4.1.50 (v4.0.0-470-g250533e6-dirty) documentation" href="index.html" />
+    <link rel="next" title="Secure Coding Practices" href="secure-coding-practices.html" />
+    <link rel="prev" title="QObject wrappers" href="qom/qom-qobject.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="qemu-and-the-stable-process">
+<h1>QEMU and the stable process<a class="headerlink" href="#qemu-and-the-stable-process" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="qemu-stable-releases">
+<h2>QEMU stable releases<a class="headerlink" href="#qemu-stable-releases" title="Permalink to this headline">¶</a></h2>
+<p>QEMU stable releases are based upon the last released QEMU version
+and marked by an additional version number, e.g. 2.10.1. Occasionally,
+a four-number version is released, if a single urgent fix needs to go
+on top.</p>
+<p>Usually, stable releases are only provided for the last major QEMU
+release. For example, when QEMU 2.11.0 is released, 2.11.x or 2.11.x.y
+stable releases are produced only until QEMU 2.12.0 is released, at
+which point the stable process moves to producing 2.12.x/2.12.x.y releases.</p>
+</div>
+<div class="section" id="what-should-go-into-a-stable-release">
+<h2>What should go into a stable release?<a class="headerlink" href="#what-should-go-into-a-stable-release" title="Permalink to this headline">¶</a></h2>
+<p>Generally, the following patches are considered stable material:
+- Patches that fix severe issues, like fixes for CVEs
+- Patches that fix regressions</p>
+<p>If you think the patch would be important for users of the current release
+(or for a distribution picking fixes), it is usually a good candidate
+for stable.</p>
+</div>
+<div class="section" id="how-to-get-a-patch-into-qemu-stable">
+<h2>How to get a patch into QEMU stable<a class="headerlink" href="#how-to-get-a-patch-into-qemu-stable" title="Permalink to this headline">¶</a></h2>
+<p>There are various ways to get a patch into stable:</p>
+<ul>
+<li><p class="first">Preferred: Make sure that the stable maintainers are on copy when you send
+the patch by adding</p>
+<div class="code highlight-python"><div class="highlight"><pre>Cc: qemu-stable@nongnu.org
+</pre></div>
+</div>
+<p>to the patch description. By default, this will send a copy of the patch
+to <code class="docutils literal"><span class="pre">qemu-stable&#64;nongnu.org</span></code> if you use git send-email, which is where
+patches that are stable candidates are tracked by the maintainers.</p>
+</li>
+<li><p class="first">You can also reply to a patch and put <code class="docutils literal"><span class="pre">qemu-stable&#64;nongnu.org</span></code> on copy
+directly in your mail client if you think a previously submitted patch
+should be considered for a stable release.</p>
+</li>
+<li><p class="first">If a maintainer judges the patch appropriate for stable later on (or you
+notify them), they will add the same line to the patch, meaning that
+the stable maintainers will be on copy on the maintainer&#8217;s pull request.</p>
+</li>
+<li><p class="first">If you judge an already merged patch suitable for stable, send a mail
+(preferably as a reply to the most recent patch submission) to
+<code class="docutils literal"><span class="pre">qemu-stable&#64;nongnu.org</span></code> along with <code class="docutils literal"><span class="pre">qemu-devel&#64;nongnu.org</span></code> and
+appropriate other people (like the patch author or the relevant maintainer)
+on copy.</p>
+</li>
+</ul>
+</div>
+<div class="section" id="stable-release-process">
+<h2>Stable release process<a class="headerlink" href="#stable-release-process" title="Permalink to this headline">¶</a></h2>
+<p>When the stable maintainers prepare a new stable release, they will prepare
+a git branch with a release candidate and send the patches out to
+<code class="docutils literal"><span class="pre">qemu-devel&#64;nongnu.org</span></code> for review. If any of your patches are included,
+please verify that they look fine, especially if the maintainer had to tweak
+the patch as part of back-porting things across branches. You may also
+nominate other patches that you think are suitable for inclusion. After
+review is complete (may involve more release candidates), a new stable release
+is made available.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">QEMU</a></h1>
+
+
+
+<p class="blurb">Developers Guide</p>
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=&repo=&type=watch&count=true&size=large"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="decodetree.html">Decodetree Specification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kconfig.html">QEMU and Kconfig</a></li>
+<li class="toctree-l1"><a class="reference internal" href="loads-stores.html">Load and Store APIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="memory.html">The memory API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration.html">Migration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="qapi.html">QAPI headers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="qemu.html">QEMU headers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="qom.html">QOM headers</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="">QEMU and the stable process</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#qemu-stable-releases">QEMU stable releases</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#what-should-go-into-a-stable-release">What should go into a stable release?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#how-to-get-a-patch-into-qemu-stable">How to get a patch into QEMU stable</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#stable-release-process">Stable release process</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="secure-coding-practices.html">Secure Coding Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tcg.html">Translator Internals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing in QEMU</a></li>
+</ul>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, The QEMU Project Developers.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

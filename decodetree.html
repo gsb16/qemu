@@ -1,0 +1,342 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Decodetree Specification &mdash; QEMU 4.1.50 (v4.0.0-470-g250533e6-dirty) documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '4.1.50 (v4.0.0-470-g250533e6-dirty)',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  false
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="QEMU 4.1.50 (v4.0.0-470-g250533e6-dirty) documentation" href="index.html" />
+    <link rel="next" title="QEMU and Kconfig" href="kconfig.html" />
+    <link rel="prev" title="QEMU Developer’s Guide" href="index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="decodetree-specification">
+<h1>Decodetree Specification<a class="headerlink" href="#decodetree-specification" title="Permalink to this headline">¶</a></h1>
+<p>A <em>decodetree</em> is built from instruction <em>patterns</em>.  A pattern may
+represent a single architectural instruction or a group of same, depending
+on what is convenient for further processing.</p>
+<p>Each pattern has both <em>fixedbits</em> and <em>fixedmask</em>, the combination of which
+describes the condition under which the pattern is matched:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="p">(</span><span class="n">insn</span> <span class="o">&amp;</span> <span class="n">fixedmask</span><span class="p">)</span> <span class="o">==</span> <span class="n">fixedbits</span>
+</pre></div>
+</div>
+<p>Each pattern may have <em>fields</em>, which are extracted from the insn and
+passed along to the translator.  Examples of such are registers,
+immediates, and sub-opcodes.</p>
+<p>In support of patterns, one may declare <em>fields</em>, <em>argument sets</em>, and
+<em>formats</em>, each of which may be re-used to simplify further definitions.</p>
+<div class="section" id="fields">
+<h2>Fields<a class="headerlink" href="#fields" title="Permalink to this headline">¶</a></h2>
+<p>Syntax:</p>
+<div class="highlight-python"><div class="highlight"><pre>field_def     := &#39;%&#39; identifier ( unnamed_field )* ( !function=identifier )?
+unnamed_field := number &#39;:&#39; ( &#39;s&#39; ) number
+</pre></div>
+</div>
+<p>For <em>unnamed_field</em>, the first number is the least-significant bit position
+of the field and the second number is the length of the field.  If the &#8216;s&#8217; is
+present, the field is considered signed.  If multiple <code class="docutils literal"><span class="pre">unnamed_fields</span></code> are
+present, they are concatenated.  In this way one can define disjoint fields.</p>
+<p>If <code class="docutils literal"><span class="pre">!function</span></code> is specified, the concatenated result is passed through the
+named function, taking and returning an integral value.</p>
+<p>One may use <code class="docutils literal"><span class="pre">!function</span></code> with zero <code class="docutils literal"><span class="pre">unnamed_fields</span></code>.  This case is called
+a <em>parameter</em>, and the named function is only passed the <code class="docutils literal"><span class="pre">DisasContext</span></code>
+and returns an integral value extracted from there.</p>
+<p>A field with no <code class="docutils literal"><span class="pre">unnamed_fields</span></code> and no <code class="docutils literal"><span class="pre">!function</span></code> is in error.</p>
+<p>FIXME: the fields of the structure into which this result will be stored
+is restricted to <code class="docutils literal"><span class="pre">int</span></code>.  Which means that we cannot expand 64-bit items.</p>
+<p>Field examples:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="38%" />
+<col width="63%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Input</th>
+<th class="head">Generated code</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>%disp   0:s16</td>
+<td>sextract(i, 0, 16)</td>
+</tr>
+<tr class="row-odd"><td>%imm9   16:6 10:3</td>
+<td>extract(i, 16, 6) &lt;&lt; 3 | extract(i, 10, 3)</td>
+</tr>
+<tr class="row-even"><td>%disp12 0:s1 1:1 2:10</td>
+<td><dl class="first last docutils">
+<dt>sextract(i, 0, 1) &lt;&lt; 11 |</dt>
+<dd>extract(i, 1, 1) &lt;&lt; 10 |
+extract(i, 2, 10)</dd>
+</dl>
+</td>
+</tr>
+<tr class="row-odd"><td><dl class="first last docutils">
+<dt>%shimm8 5:s8 13:1</dt>
+<dd>!function=expand_shimm8</dd>
+</dl>
+</td>
+<td><dl class="first last docutils">
+<dt>expand_shimm8(sextract(i, 5, 8) &lt;&lt; 1 |</dt>
+<dd>extract(i, 13, 1))</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="argument-sets">
+<h2>Argument Sets<a class="headerlink" href="#argument-sets" title="Permalink to this headline">¶</a></h2>
+<p>Syntax:</p>
+<div class="highlight-python"><div class="highlight"><pre>args_def    := &#39;&amp;&#39; identifier ( args_elt )+ ( !extern )?
+args_elt    := identifier
+</pre></div>
+</div>
+<p>Each <em>args_elt</em> defines an argument within the argument set.
+Each argument set will be rendered as a C structure &#8220;arg_$name&#8221;
+with each of the fields being one of the member arguments.</p>
+<p>If <code class="docutils literal"><span class="pre">!extern</span></code> is specified, the backing structure is assumed
+to have been already declared, typically via a second decoder.</p>
+<p>Argument sets are useful when one wants to define helper functions
+for the translator functions that can perform operations on a common
+set of arguments.  This can ensure, for instance, that the <code class="docutils literal"><span class="pre">AND</span></code>
+pattern and the <code class="docutils literal"><span class="pre">OR</span></code> pattern put their operands into the same named
+structure, so that a common <code class="docutils literal"><span class="pre">gen_logic_insn</span></code> may be able to handle
+the operations common between the two.</p>
+<p>Argument set examples:</p>
+<div class="highlight-python"><div class="highlight"><pre>&amp;reg3       ra rb rc
+&amp;loadstore  reg base offset
+</pre></div>
+</div>
+</div>
+<div class="section" id="formats">
+<h2>Formats<a class="headerlink" href="#formats" title="Permalink to this headline">¶</a></h2>
+<p>Syntax:</p>
+<div class="highlight-python"><div class="highlight"><pre>fmt_def      := &#39;@&#39; identifier ( fmt_elt )+
+fmt_elt      := fixedbit_elt | field_elt | field_ref | args_ref
+fixedbit_elt := [01.-]+
+field_elt    := identifier &#39;:&#39; &#39;s&#39;? number
+field_ref    := &#39;%&#39; identifier | identifier &#39;=&#39; &#39;%&#39; identifier
+args_ref     := &#39;&amp;&#39; identifier
+</pre></div>
+</div>
+<p>Defining a format is a handy way to avoid replicating groups of fields
+across many instruction patterns.</p>
+<p>A <em>fixedbit_elt</em> describes a contiguous sequence of bits that must
+be 1, 0, or don&#8217;t care.  The difference between &#8216;.&#8217; and &#8216;-&#8216;
+is that &#8216;.&#8217; means that the bit will be covered with a field or a
+final 0 or 1 from the pattern, and &#8216;-&#8216; means that the bit is really
+ignored by the cpu and will not be specified.</p>
+<p>A <em>field_elt</em> describes a simple field only given a width; the position of
+the field is implied by its position with respect to other <em>fixedbit_elt</em>
+and <em>field_elt</em>.</p>
+<p>If any <em>fixedbit_elt</em> or <em>field_elt</em> appear, then all bits must be defined.
+Padding with a <em>fixedbit_elt</em> of all &#8216;.&#8217; is an easy way to accomplish that.</p>
+<p>A <em>field_ref</em> incorporates a field by reference.  This is the only way to
+add a complex field to a format.  A field may be renamed in the process
+via assignment to another identifier.  This is intended to allow the
+same argument set be used with disjoint named fields.</p>
+<p>A single <em>args_ref</em> may specify an argument set to use for the format.
+The set of fields in the format must be a subset of the arguments in
+the argument set.  If an argument set is not specified, one will be
+inferred from the set of fields.</p>
+<p>It is recommended, but not required, that all <em>field_ref</em> and <em>args_ref</em>
+appear at the end of the line, not interleaving with <em>fixedbit_elf</em> or
+<em>field_elt</em>.</p>
+<p>Format examples:</p>
+<div class="highlight-python"><div class="highlight"><pre>@opr    ...... ra:5 rb:5 ... 0 ....... rc:5
+@opi    ...... ra:5 lit:8    1 ....... rc:5
+</pre></div>
+</div>
+</div>
+<div class="section" id="patterns">
+<h2>Patterns<a class="headerlink" href="#patterns" title="Permalink to this headline">¶</a></h2>
+<p>Syntax:</p>
+<div class="highlight-python"><div class="highlight"><pre>pat_def      := identifier ( pat_elt )+
+pat_elt      := fixedbit_elt | field_elt | field_ref | args_ref | fmt_ref | const_elt
+fmt_ref      := &#39;@&#39; identifier
+const_elt    := identifier &#39;=&#39; number
+</pre></div>
+</div>
+<p>The <em>fixedbit_elt</em> and <em>field_elt</em> specifiers are unchanged from formats.
+A pattern that does not specify a named format will have one inferred
+from a referenced argument set (if present) and the set of fields.</p>
+<p>A <em>const_elt</em> allows a argument to be set to a constant value.  This may
+come in handy when fields overlap between patterns and one has to
+include the values in the <em>fixedbit_elt</em> instead.</p>
+<p>The decoder will call a translator function for each pattern matched.</p>
+<p>Pattern examples:</p>
+<div class="highlight-python"><div class="highlight"><pre>addl_r   010000 ..... ..... .... 0000000 ..... @opr
+addl_i   010000 ..... ..... .... 0000000 ..... @opi
+</pre></div>
+</div>
+<p>which will, in part, invoke:</p>
+<div class="highlight-python"><div class="highlight"><pre>trans_addl_r(ctx, &amp;arg_opr, insn)
+</pre></div>
+</div>
+<p>and:</p>
+<div class="highlight-python"><div class="highlight"><pre>trans_addl_i(ctx, &amp;arg_opi, insn)
+</pre></div>
+</div>
+</div>
+<div class="section" id="pattern-groups">
+<h2>Pattern Groups<a class="headerlink" href="#pattern-groups" title="Permalink to this headline">¶</a></h2>
+<p>Syntax:</p>
+<div class="highlight-python"><div class="highlight"><pre>group    := &#39;{&#39; ( pat_def | group )+ &#39;}&#39;
+</pre></div>
+</div>
+<p>A <em>group</em> begins with a lone open-brace, with all subsequent lines
+indented two spaces, and ending with a lone close-brace.  Groups
+may be nested, increasing the required indentation of the lines
+within the nested group to two spaces per nesting level.</p>
+<p>Unlike ungrouped patterns, grouped patterns are allowed to overlap.
+Conflicts are resolved by selecting the patterns in order.  If all
+of the fixedbits for a pattern match, its translate function will
+be called.  If the translate function returns false, then subsequent
+patterns within the group will be matched.</p>
+<p>The following example from PA-RISC shows specialization of the <em>or</em>
+instruction:</p>
+<div class="highlight-python"><div class="highlight"><pre>{
+  {
+    nop   000010 ----- ----- 0000 001001 0 00000
+    copy  000010 00000 r1:5  0000 001001 0 rt:5
+  }
+  or      000010 rt2:5 r1:5  cf:4 001001 0 rt:5
+}
+</pre></div>
+</div>
+<p>When the <em>cf</em> field is zero, the instruction has no side effects,
+and may be specialized.  When the <em>rt</em> field is zero, the output
+is discarded and so the instruction has no effect.  When the <em>rt2</em>
+field is zero, the operation is <code class="docutils literal"><span class="pre">reg[rt]</span> <span class="pre">|</span> <span class="pre">0</span></code> and so encodes
+the canonical register copy operation.</p>
+<p>The output from the generator might look like:</p>
+<div class="highlight-python"><div class="highlight"><pre>switch (insn &amp; 0xfc000fe0) {
+case 0x08000240:
+  /* 000010.. ........ ....0010 010..... */
+  if ((insn &amp; 0x0000f000) == 0x00000000) {
+      /* 000010.. ........ 00000010 010..... */
+      if ((insn &amp; 0x0000001f) == 0x00000000) {
+          /* 000010.. ........ 00000010 01000000 */
+          extract_decode_Fmt_0(&amp;u.f_decode0, insn);
+          if (trans_nop(ctx, &amp;u.f_decode0)) return true;
+      }
+      if ((insn &amp; 0x03e00000) == 0x00000000) {
+          /* 00001000 000..... 00000010 010..... */
+          extract_decode_Fmt_1(&amp;u.f_decode1, insn);
+          if (trans_copy(ctx, &amp;u.f_decode1)) return true;
+      }
+  }
+  extract_decode_Fmt_2(&amp;u.f_decode2, insn);
+  if (trans_or(ctx, &amp;u.f_decode2)) return true;
+  return false;
+}
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">QEMU</a></h1>
+
+
+
+<p class="blurb">Developers Guide</p>
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=&repo=&type=watch&count=true&size=large"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="">Decodetree Specification</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#fields">Fields</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#argument-sets">Argument Sets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#formats">Formats</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#patterns">Patterns</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#pattern-groups">Pattern Groups</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="kconfig.html">QEMU and Kconfig</a></li>
+<li class="toctree-l1"><a class="reference internal" href="loads-stores.html">Load and Store APIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="memory.html">The memory API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration.html">Migration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="qapi.html">QAPI headers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="qemu.html">QEMU headers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="qom.html">QOM headers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stable-process.html">QEMU and the stable process</a></li>
+<li class="toctree-l1"><a class="reference internal" href="secure-coding-practices.html">Secure Coding Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tcg.html">Translator Internals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing in QEMU</a></li>
+</ul>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, The QEMU Project Developers.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,1063 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>timer header &mdash; QEMU 4.1.50 (v4.0.0-470-g250533e6-dirty) documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '4.1.50 (v4.0.0-470-g250533e6-dirty)',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  false
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="QEMU 4.1.50 (v4.0.0-470-g250533e6-dirty) documentation" href="../index.html" />
+    <link rel="up" title="QEMU headers" href="../qemu.html" />
+    <link rel="next" title="typedefs header" href="typedefs.html" />
+    <link rel="prev" title="timed-average header" href="timed-average.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="timer-header">
+<h1>timer header<a class="headerlink" href="#timer-header" title="Permalink to this headline">¶</a></h1>
+<p>The documentation of QEMU&#8217;s <code class="docutils literal"><span class="pre">qemu/timer.h</span></code> header.</p>
+<dl class="function">
+<dt id="c.QEMU_TIMER_ATTR_EXTERNAL">
+<code class="descname">QEMU_TIMER_ATTR_EXTERNAL</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.QEMU_TIMER_ATTR_EXTERNAL" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<p><strong>Description</strong></p>
+<p>An individual timer may be given one or multiple attributes when initialized.
+Each attribute corresponds to one bit. Attributes modify the processing
+of timers when they fire.</p>
+<p>The following attributes are available:</p>
+<p>QEMU_TIMER_ATTR_EXTERNAL: drives external subsystem
+QEMU_TIMER_ATTR_ALL: mask for all existing attributes</p>
+<p>Timers with this attribute do not recorded in rr mode, therefore it could be
+used for the subsystems that operate outside the guest core. Applicable only
+with virtual clock type.</p>
+<dl class="function">
+<dt id="c.qemu_clock_get_ms">
+int64_t <code class="descname">qemu_clock_get_ms</code><span class="sig-paren">(</span>QEMUClockType<em>&nbsp;type</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_clock_get_ms" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUClockType</span> <span class="pre">type</span></code></dt>
+<dd>the clock type</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Get the millisecond value of a clock with
+type <strong>type</strong></p>
+<p><strong>Return</strong></p>
+<p>the clock value in milliseconds</p>
+<dl class="function">
+<dt id="c.qemu_clock_get_us">
+int64_t <code class="descname">qemu_clock_get_us</code><span class="sig-paren">(</span>QEMUClockType<em>&nbsp;type</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_clock_get_us" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUClockType</span> <span class="pre">type</span></code></dt>
+<dd>the clock type</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Get the microsecond value of a clock with
+type <strong>type</strong></p>
+<p><strong>Return</strong></p>
+<p>the clock value in microseconds</p>
+<dl class="function">
+<dt id="c.qemu_clock_has_timers">
+<a class="reference internal" href="../qom/object_interfaces.html#c.bool" title="bool">bool</a> <code class="descname">qemu_clock_has_timers</code><span class="sig-paren">(</span>QEMUClockType<em>&nbsp;type</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_clock_has_timers" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUClockType</span> <span class="pre">type</span></code></dt>
+<dd>the clock type</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Determines whether a clock&#8217;s default timer list
+has timers attached</p>
+<p>Note that this function should not be used when other threads also access
+the timer list.  The return value may be outdated by the time it is acted
+upon.</p>
+<p><strong>Return</strong></p>
+<p>true if the clock&#8217;s default timer list
+has timers attached</p>
+<dl class="function">
+<dt id="c.qemu_clock_expired">
+<a class="reference internal" href="../qom/object_interfaces.html#c.bool" title="bool">bool</a> <code class="descname">qemu_clock_expired</code><span class="sig-paren">(</span>QEMUClockType<em>&nbsp;type</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_clock_expired" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUClockType</span> <span class="pre">type</span></code></dt>
+<dd>the clock type</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Determines whether a clock&#8217;s default timer list
+has an expired timer.</p>
+<p><strong>Return</strong></p>
+<p>true if the clock&#8217;s default timer list has
+an expired timer</p>
+<dl class="function">
+<dt id="c.qemu_clock_use_for_deadline">
+<a class="reference internal" href="../qom/object_interfaces.html#c.bool" title="bool">bool</a> <code class="descname">qemu_clock_use_for_deadline</code><span class="sig-paren">(</span>QEMUClockType<em>&nbsp;type</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_clock_use_for_deadline" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUClockType</span> <span class="pre">type</span></code></dt>
+<dd>the clock type</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Determine whether a clock should be used for deadline
+calculations. Some clocks, for instance vm_clock with
+use_icount set, do not count in nanoseconds. Such clocks
+are not used for deadline calculations, and are presumed
+to interrupt any poll using qemu_notify/aio_notify
+etc.</p>
+<p><strong>Return</strong></p>
+<p>true if the clock runs in nanoseconds and
+should be used for a deadline.</p>
+<dl class="function">
+<dt id="c.qemu_clock_deadline_ns_all">
+int64_t <code class="descname">qemu_clock_deadline_ns_all</code><span class="sig-paren">(</span>QEMUClockType<em>&nbsp;type</em>, int<em>&nbsp;attr_mask</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_clock_deadline_ns_all" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUClockType</span> <span class="pre">type</span></code></dt>
+<dd>the clock type</dd>
+<dt><code class="docutils literal"><span class="pre">int</span> <span class="pre">attr_mask</span></code></dt>
+<dd>mask for the timer attributes that are included
+in deadline calculation</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Calculate the deadline across all timer lists associated
+with a clock (as opposed to just the default one)
+in nanoseconds, or -1 if no timer is set to expire.</p>
+<p><strong>Return</strong></p>
+<p>time until expiry in nanoseconds or -1</p>
+<dl class="function">
+<dt id="c.qemu_clock_get_main_loop_timerlist">
+QEMUTimerList * <code class="descname">qemu_clock_get_main_loop_timerlist</code><span class="sig-paren">(</span>QEMUClockType<em>&nbsp;type</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_clock_get_main_loop_timerlist" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUClockType</span> <span class="pre">type</span></code></dt>
+<dd>the clock type</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Return the default timer list associated with a clock.</p>
+<p><strong>Return</strong></p>
+<p>the default timer list</p>
+<dl class="function">
+<dt id="c.qemu_clock_notify">
+void <code class="descname">qemu_clock_notify</code><span class="sig-paren">(</span>QEMUClockType<em>&nbsp;type</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_clock_notify" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUClockType</span> <span class="pre">type</span></code></dt>
+<dd>the clock type</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Call the notifier callback connected with the default timer
+list linked to the clock, or qemu_notify() if none.</p>
+<dl class="function">
+<dt id="c.qemu_clock_enable">
+void <code class="descname">qemu_clock_enable</code><span class="sig-paren">(</span>QEMUClockType<em>&nbsp;type</em>, <a class="reference internal" href="../qom/object_interfaces.html#c.bool" title="bool">bool</a><em>&nbsp;enabled</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_clock_enable" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUClockType</span> <span class="pre">type</span></code></dt>
+<dd>the clock type</dd>
+<dt><code class="docutils literal"><span class="pre">bool</span> <span class="pre">enabled</span></code></dt>
+<dd>true to enable, false to disable</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Enable or disable a clock
+Disabling the clock will wait for related timerlists to stop
+executing qemu_run_timers.  Thus, this functions should not
+be used from the callback of a timer that is based on <strong>clock</strong>.
+Doing so would cause a deadlock.</p>
+<p>Caller should hold BQL.</p>
+<dl class="function">
+<dt id="c.qemu_start_warp_timer">
+void <code class="descname">qemu_start_warp_timer</code><span class="sig-paren">(</span>void<span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_start_warp_timer" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">void</span></code></dt>
+<dd>no arguments</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Starts a timer for virtual clock update</p>
+<dl class="function">
+<dt id="c.qemu_clock_run_timers">
+<a class="reference internal" href="../qom/object_interfaces.html#c.bool" title="bool">bool</a> <code class="descname">qemu_clock_run_timers</code><span class="sig-paren">(</span>QEMUClockType<em>&nbsp;type</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_clock_run_timers" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUClockType</span> <span class="pre">type</span></code></dt>
+<dd>clock on which to operate</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Run all the timers associated with the default timer list
+of a clock.</p>
+<p><strong>Return</strong></p>
+<p>true if any timer ran.</p>
+<dl class="function">
+<dt id="c.qemu_clock_run_all_timers">
+<a class="reference internal" href="../qom/object_interfaces.html#c.bool" title="bool">bool</a> <code class="descname">qemu_clock_run_all_timers</code><span class="sig-paren">(</span>void<span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_clock_run_all_timers" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">void</span></code></dt>
+<dd>no arguments</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Run all the timers associated with the default timer list
+of every clock.</p>
+<p><strong>Return</strong></p>
+<p>true if any timer ran.</p>
+<dl class="function">
+<dt id="c.timerlist_new">
+QEMUTimerList * <code class="descname">timerlist_new</code><span class="sig-paren">(</span>QEMUClockType<em>&nbsp;type</em>, QEMUTimerListNotifyCB *<em>&nbsp;cb</em>, void *<em>&nbsp;opaque</em><span class="sig-paren">)</span><a class="headerlink" href="#c.timerlist_new" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUClockType</span> <span class="pre">type</span></code></dt>
+<dd>the clock type to associate with the timerlist</dd>
+<dt><code class="docutils literal"><span class="pre">QEMUTimerListNotifyCB</span> <span class="pre">*</span> <span class="pre">cb</span></code></dt>
+<dd>the callback to call on notification</dd>
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">opaque</span></code></dt>
+<dd>the opaque pointer to pass to the callback</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Create a new timerlist associated with the clock of
+type <strong>type</strong>.</p>
+<p><strong>Return</strong></p>
+<p>a pointer to the QEMUTimerList created</p>
+<dl class="function">
+<dt id="c.timerlist_free">
+void <code class="descname">timerlist_free</code><span class="sig-paren">(</span>QEMUTimerList *<em>&nbsp;timer_list</em><span class="sig-paren">)</span><a class="headerlink" href="#c.timerlist_free" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUTimerList</span> <span class="pre">*</span> <span class="pre">timer_list</span></code></dt>
+<dd>the timer list to free</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Frees a timer_list. It must have no active timers.</p>
+<dl class="function">
+<dt id="c.timerlist_has_timers">
+<a class="reference internal" href="../qom/object_interfaces.html#c.bool" title="bool">bool</a> <code class="descname">timerlist_has_timers</code><span class="sig-paren">(</span>QEMUTimerList *<em>&nbsp;timer_list</em><span class="sig-paren">)</span><a class="headerlink" href="#c.timerlist_has_timers" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUTimerList</span> <span class="pre">*</span> <span class="pre">timer_list</span></code></dt>
+<dd>the timer list to operate on</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Determine whether a timer list has active timers</p>
+<p>Note that this function should not be used when other threads also access
+the timer list.  The return value may be outdated by the time it is acted
+upon.</p>
+<p><strong>Return</strong></p>
+<p>true if the timer list has timers.</p>
+<dl class="function">
+<dt id="c.timerlist_expired">
+<a class="reference internal" href="../qom/object_interfaces.html#c.bool" title="bool">bool</a> <code class="descname">timerlist_expired</code><span class="sig-paren">(</span>QEMUTimerList *<em>&nbsp;timer_list</em><span class="sig-paren">)</span><a class="headerlink" href="#c.timerlist_expired" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUTimerList</span> <span class="pre">*</span> <span class="pre">timer_list</span></code></dt>
+<dd>the timer list to operate on</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Determine whether a timer list has any timers which
+are expired.</p>
+<p><strong>Return</strong></p>
+<p>true if the timer list has timers which
+have expired.</p>
+<dl class="function">
+<dt id="c.timerlist_deadline_ns">
+int64_t <code class="descname">timerlist_deadline_ns</code><span class="sig-paren">(</span>QEMUTimerList *<em>&nbsp;timer_list</em><span class="sig-paren">)</span><a class="headerlink" href="#c.timerlist_deadline_ns" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUTimerList</span> <span class="pre">*</span> <span class="pre">timer_list</span></code></dt>
+<dd>the timer list to operate on</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Determine the deadline for a timer_list, i.e.
+the number of nanoseconds until the first timer
+expires. Return -1 if there are no timers.</p>
+<p><strong>Return</strong></p>
+<p>the number of nanoseconds until the earliest
+timer expires -1 if none</p>
+<dl class="function">
+<dt id="c.timerlist_get_clock">
+QEMUClockType <code class="descname">timerlist_get_clock</code><span class="sig-paren">(</span>QEMUTimerList *<em>&nbsp;timer_list</em><span class="sig-paren">)</span><a class="headerlink" href="#c.timerlist_get_clock" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUTimerList</span> <span class="pre">*</span> <span class="pre">timer_list</span></code></dt>
+<dd>the timer list to operate on</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Determine the clock type associated with a timer list.</p>
+<p><strong>Return</strong></p>
+<p>the clock type associated with the
+timer list.</p>
+<dl class="function">
+<dt id="c.timerlist_run_timers">
+<a class="reference internal" href="../qom/object_interfaces.html#c.bool" title="bool">bool</a> <code class="descname">timerlist_run_timers</code><span class="sig-paren">(</span>QEMUTimerList *<em>&nbsp;timer_list</em><span class="sig-paren">)</span><a class="headerlink" href="#c.timerlist_run_timers" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUTimerList</span> <span class="pre">*</span> <span class="pre">timer_list</span></code></dt>
+<dd>the timer list to use</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Call all expired timers associated with the timer list.</p>
+<p><strong>Return</strong></p>
+<p>true if any timer expired</p>
+<dl class="function">
+<dt id="c.timerlist_notify">
+void <code class="descname">timerlist_notify</code><span class="sig-paren">(</span>QEMUTimerList *<em>&nbsp;timer_list</em><span class="sig-paren">)</span><a class="headerlink" href="#c.timerlist_notify" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUTimerList</span> <span class="pre">*</span> <span class="pre">timer_list</span></code></dt>
+<dd>the timer list to use</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>call the notifier callback associated with the timer list.</p>
+<dl class="function">
+<dt id="c.timerlistgroup_init">
+void <code class="descname">timerlistgroup_init</code><span class="sig-paren">(</span>QEMUTimerListGroup *<em>&nbsp;tlg</em>, QEMUTimerListNotifyCB *<em>&nbsp;cb</em>, void *<em>&nbsp;opaque</em><span class="sig-paren">)</span><a class="headerlink" href="#c.timerlistgroup_init" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUTimerListGroup</span> <span class="pre">*</span> <span class="pre">tlg</span></code></dt>
+<dd>the timer list group</dd>
+<dt><code class="docutils literal"><span class="pre">QEMUTimerListNotifyCB</span> <span class="pre">*</span> <span class="pre">cb</span></code></dt>
+<dd>the callback to call when a notify is required</dd>
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">opaque</span></code></dt>
+<dd>the opaque pointer to be passed to the callback.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Initialise a timer list group. This must already be
+allocated in memory and zeroed. The notifier callback is
+called whenever a clock in the timer list group is
+reenabled or whenever a timer associated with any timer
+list is modified. If <strong>cb</strong> is specified as null, qemu_notify()
+is used instead.</p>
+<dl class="function">
+<dt id="c.timerlistgroup_deinit">
+void <code class="descname">timerlistgroup_deinit</code><span class="sig-paren">(</span>QEMUTimerListGroup *<em>&nbsp;tlg</em><span class="sig-paren">)</span><a class="headerlink" href="#c.timerlistgroup_deinit" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUTimerListGroup</span> <span class="pre">*</span> <span class="pre">tlg</span></code></dt>
+<dd>the timer list group</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Deinitialise a timer list group. This must already be
+initialised. Note the memory is not freed.</p>
+<dl class="function">
+<dt id="c.timerlistgroup_run_timers">
+<a class="reference internal" href="../qom/object_interfaces.html#c.bool" title="bool">bool</a> <code class="descname">timerlistgroup_run_timers</code><span class="sig-paren">(</span>QEMUTimerListGroup *<em>&nbsp;tlg</em><span class="sig-paren">)</span><a class="headerlink" href="#c.timerlistgroup_run_timers" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUTimerListGroup</span> <span class="pre">*</span> <span class="pre">tlg</span></code></dt>
+<dd>the timer list group</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Run the timers associated with a timer list group.
+This will run timers on multiple clocks.</p>
+<p><strong>Return</strong></p>
+<p>true if any timer callback ran</p>
+<dl class="function">
+<dt id="c.timerlistgroup_deadline_ns">
+int64_t <code class="descname">timerlistgroup_deadline_ns</code><span class="sig-paren">(</span>QEMUTimerListGroup *<em>&nbsp;tlg</em><span class="sig-paren">)</span><a class="headerlink" href="#c.timerlistgroup_deadline_ns" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUTimerListGroup</span> <span class="pre">*</span> <span class="pre">tlg</span></code></dt>
+<dd>the timer list group</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Determine the deadline of the soonest timer to
+expire associated with any timer list linked to
+the timer list group. Only clocks suitable for
+deadline calculation are included.</p>
+<p><strong>Return</strong></p>
+<p>the deadline in nanoseconds or -1 if no
+timers are to expire.</p>
+<dl class="function">
+<dt id="c.timer_init_full">
+void <code class="descname">timer_init_full</code><span class="sig-paren">(</span>QEMUTimer *<em>&nbsp;ts</em>, QEMUTimerListGroup *<em>&nbsp;timer_list_group</em>, QEMUClockType<em>&nbsp;type</em>, int<em>&nbsp;scale</em>, int<em>&nbsp;attributes</em>, QEMUTimerCB *<em>&nbsp;cb</em>, void *<em>&nbsp;opaque</em><span class="sig-paren">)</span><a class="headerlink" href="#c.timer_init_full" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUTimer</span> <span class="pre">*</span> <span class="pre">ts</span></code></dt>
+<dd>the timer to be initialised</dd>
+<dt><code class="docutils literal"><span class="pre">QEMUTimerListGroup</span> <span class="pre">*</span> <span class="pre">timer_list_group</span></code></dt>
+<dd>(optional) the timer list group to attach the timer to</dd>
+<dt><code class="docutils literal"><span class="pre">QEMUClockType</span> <span class="pre">type</span></code></dt>
+<dd>the clock type to use</dd>
+<dt><code class="docutils literal"><span class="pre">int</span> <span class="pre">scale</span></code></dt>
+<dd>the scale value for the timer</dd>
+<dt><code class="docutils literal"><span class="pre">int</span> <span class="pre">attributes</span></code></dt>
+<dd>0, or one or more OR&#8217;ed QEMU_TIMER_ATTR_&lt;id&gt; values</dd>
+<dt><code class="docutils literal"><span class="pre">QEMUTimerCB</span> <span class="pre">*</span> <span class="pre">cb</span></code></dt>
+<dd>the callback to be called when the timer expires</dd>
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">opaque</span></code></dt>
+<dd>the opaque pointer to be passed to the callback</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Initialise a timer with the given scale and attributes,
+and associate it with timer list for given clock <strong>type</strong> in <strong>timer_list_group</strong>
+(or default timer list group, if NULL).
+The caller is responsible for allocating the memory.</p>
+<p>You need not call an explicit deinit call. Simply make
+sure it is not on a list with timer_del.</p>
+<dl class="function">
+<dt id="c.timer_init">
+void <code class="descname">timer_init</code><span class="sig-paren">(</span>QEMUTimer *<em>&nbsp;ts</em>, QEMUClockType<em>&nbsp;type</em>, int<em>&nbsp;scale</em>, QEMUTimerCB *<em>&nbsp;cb</em>, void *<em>&nbsp;opaque</em><span class="sig-paren">)</span><a class="headerlink" href="#c.timer_init" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUTimer</span> <span class="pre">*</span> <span class="pre">ts</span></code></dt>
+<dd>the timer to be initialised</dd>
+<dt><code class="docutils literal"><span class="pre">QEMUClockType</span> <span class="pre">type</span></code></dt>
+<dd>the clock to associate with the timer</dd>
+<dt><code class="docutils literal"><span class="pre">int</span> <span class="pre">scale</span></code></dt>
+<dd>the scale value for the timer</dd>
+<dt><code class="docutils literal"><span class="pre">QEMUTimerCB</span> <span class="pre">*</span> <span class="pre">cb</span></code></dt>
+<dd>the callback to call when the timer expires</dd>
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">opaque</span></code></dt>
+<dd>the opaque pointer to pass to the callback</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Initialize a timer with the given scale on the default timer list
+associated with the clock.
+See timer_init_full for details.</p>
+<dl class="function">
+<dt id="c.timer_init_ns">
+void <code class="descname">timer_init_ns</code><span class="sig-paren">(</span>QEMUTimer *<em>&nbsp;ts</em>, QEMUClockType<em>&nbsp;type</em>, QEMUTimerCB *<em>&nbsp;cb</em>, void *<em>&nbsp;opaque</em><span class="sig-paren">)</span><a class="headerlink" href="#c.timer_init_ns" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUTimer</span> <span class="pre">*</span> <span class="pre">ts</span></code></dt>
+<dd>the timer to be initialised</dd>
+<dt><code class="docutils literal"><span class="pre">QEMUClockType</span> <span class="pre">type</span></code></dt>
+<dd>the clock to associate with the timer</dd>
+<dt><code class="docutils literal"><span class="pre">QEMUTimerCB</span> <span class="pre">*</span> <span class="pre">cb</span></code></dt>
+<dd>the callback to call when the timer expires</dd>
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">opaque</span></code></dt>
+<dd>the opaque pointer to pass to the callback</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Initialize a timer with nanosecond scale on the default timer list
+associated with the clock.
+See timer_init_full for details.</p>
+<dl class="function">
+<dt id="c.timer_init_us">
+void <code class="descname">timer_init_us</code><span class="sig-paren">(</span>QEMUTimer *<em>&nbsp;ts</em>, QEMUClockType<em>&nbsp;type</em>, QEMUTimerCB *<em>&nbsp;cb</em>, void *<em>&nbsp;opaque</em><span class="sig-paren">)</span><a class="headerlink" href="#c.timer_init_us" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUTimer</span> <span class="pre">*</span> <span class="pre">ts</span></code></dt>
+<dd>the timer to be initialised</dd>
+<dt><code class="docutils literal"><span class="pre">QEMUClockType</span> <span class="pre">type</span></code></dt>
+<dd>the clock to associate with the timer</dd>
+<dt><code class="docutils literal"><span class="pre">QEMUTimerCB</span> <span class="pre">*</span> <span class="pre">cb</span></code></dt>
+<dd>the callback to call when the timer expires</dd>
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">opaque</span></code></dt>
+<dd>the opaque pointer to pass to the callback</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Initialize a timer with microsecond scale on the default timer list
+associated with the clock.
+See timer_init_full for details.</p>
+<dl class="function">
+<dt id="c.timer_init_ms">
+void <code class="descname">timer_init_ms</code><span class="sig-paren">(</span>QEMUTimer *<em>&nbsp;ts</em>, QEMUClockType<em>&nbsp;type</em>, QEMUTimerCB *<em>&nbsp;cb</em>, void *<em>&nbsp;opaque</em><span class="sig-paren">)</span><a class="headerlink" href="#c.timer_init_ms" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUTimer</span> <span class="pre">*</span> <span class="pre">ts</span></code></dt>
+<dd>the timer to be initialised</dd>
+<dt><code class="docutils literal"><span class="pre">QEMUClockType</span> <span class="pre">type</span></code></dt>
+<dd>the clock to associate with the timer</dd>
+<dt><code class="docutils literal"><span class="pre">QEMUTimerCB</span> <span class="pre">*</span> <span class="pre">cb</span></code></dt>
+<dd>the callback to call when the timer expires</dd>
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">opaque</span></code></dt>
+<dd>the opaque pointer to pass to the callback</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Initialize a timer with millisecond scale on the default timer list
+associated with the clock.
+See timer_init_full for details.</p>
+<dl class="function">
+<dt id="c.timer_new_full">
+QEMUTimer * <code class="descname">timer_new_full</code><span class="sig-paren">(</span>QEMUTimerListGroup *<em>&nbsp;timer_list_group</em>, QEMUClockType<em>&nbsp;type</em>, int<em>&nbsp;scale</em>, int<em>&nbsp;attributes</em>, QEMUTimerCB *<em>&nbsp;cb</em>, void *<em>&nbsp;opaque</em><span class="sig-paren">)</span><a class="headerlink" href="#c.timer_new_full" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUTimerListGroup</span> <span class="pre">*</span> <span class="pre">timer_list_group</span></code></dt>
+<dd>(optional) the timer list group to attach the timer to</dd>
+<dt><code class="docutils literal"><span class="pre">QEMUClockType</span> <span class="pre">type</span></code></dt>
+<dd>the clock type to use</dd>
+<dt><code class="docutils literal"><span class="pre">int</span> <span class="pre">scale</span></code></dt>
+<dd>the scale value for the timer</dd>
+<dt><code class="docutils literal"><span class="pre">int</span> <span class="pre">attributes</span></code></dt>
+<dd>0, or one or more OR&#8217;ed QEMU_TIMER_ATTR_&lt;id&gt; values</dd>
+<dt><code class="docutils literal"><span class="pre">QEMUTimerCB</span> <span class="pre">*</span> <span class="pre">cb</span></code></dt>
+<dd>the callback to be called when the timer expires</dd>
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">opaque</span></code></dt>
+<dd>the opaque pointer to be passed to the callback</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Create a new timer with the given scale and attributes,
+and associate it with timer list for given clock <strong>type</strong> in <strong>timer_list_group</strong>
+(or default timer list group, if NULL).
+The memory is allocated by the function.</p>
+<p>This is not the preferred interface unless you know you
+are going to call timer_free. Use timer_init or timer_init_full instead.</p>
+<p>The default timer list has one special feature: in icount mode,
+<code class="docutils literal"><span class="pre">QEMU_CLOCK_VIRTUAL</span></code> timers are run in the vCPU thread.  This is
+not true of other timer lists, which are typically associated
+with an AioContext&#8212;each of them runs its timer callbacks in its own
+AioContext thread.</p>
+<p><strong>Return</strong></p>
+<p>a pointer to the timer</p>
+<dl class="function">
+<dt id="c.timer_new">
+QEMUTimer * <code class="descname">timer_new</code><span class="sig-paren">(</span>QEMUClockType<em>&nbsp;type</em>, int<em>&nbsp;scale</em>, QEMUTimerCB *<em>&nbsp;cb</em>, void *<em>&nbsp;opaque</em><span class="sig-paren">)</span><a class="headerlink" href="#c.timer_new" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUClockType</span> <span class="pre">type</span></code></dt>
+<dd>the clock type to use</dd>
+<dt><code class="docutils literal"><span class="pre">int</span> <span class="pre">scale</span></code></dt>
+<dd>the scale value for the timer</dd>
+<dt><code class="docutils literal"><span class="pre">QEMUTimerCB</span> <span class="pre">*</span> <span class="pre">cb</span></code></dt>
+<dd>the callback to be called when the timer expires</dd>
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">opaque</span></code></dt>
+<dd>the opaque pointer to be passed to the callback</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Create a new timer with the given scale,
+and associate it with the default timer list for the clock type <strong>type</strong>.
+See timer_new_full for details.</p>
+<p><strong>Return</strong></p>
+<p>a pointer to the timer</p>
+<dl class="function">
+<dt id="c.timer_new_ns">
+QEMUTimer * <code class="descname">timer_new_ns</code><span class="sig-paren">(</span>QEMUClockType<em>&nbsp;type</em>, QEMUTimerCB *<em>&nbsp;cb</em>, void *<em>&nbsp;opaque</em><span class="sig-paren">)</span><a class="headerlink" href="#c.timer_new_ns" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUClockType</span> <span class="pre">type</span></code></dt>
+<dd>the clock type to associate with the timer</dd>
+<dt><code class="docutils literal"><span class="pre">QEMUTimerCB</span> <span class="pre">*</span> <span class="pre">cb</span></code></dt>
+<dd>the callback to call when the timer expires</dd>
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">opaque</span></code></dt>
+<dd>the opaque pointer to pass to the callback</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Create a new timer with nanosecond scale on the default timer list
+associated with the clock.
+See timer_new_full for details.</p>
+<p><strong>Return</strong></p>
+<p>a pointer to the newly created timer</p>
+<dl class="function">
+<dt id="c.timer_new_us">
+QEMUTimer * <code class="descname">timer_new_us</code><span class="sig-paren">(</span>QEMUClockType<em>&nbsp;type</em>, QEMUTimerCB *<em>&nbsp;cb</em>, void *<em>&nbsp;opaque</em><span class="sig-paren">)</span><a class="headerlink" href="#c.timer_new_us" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUClockType</span> <span class="pre">type</span></code></dt>
+<dd>the clock type to associate with the timer</dd>
+<dt><code class="docutils literal"><span class="pre">QEMUTimerCB</span> <span class="pre">*</span> <span class="pre">cb</span></code></dt>
+<dd>the callback to call when the timer expires</dd>
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">opaque</span></code></dt>
+<dd>the opaque pointer to pass to the callback</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Create a new timer with microsecond scale on the default timer list
+associated with the clock.
+See timer_new_full for details.</p>
+<p><strong>Return</strong></p>
+<p>a pointer to the newly created timer</p>
+<dl class="function">
+<dt id="c.timer_new_ms">
+QEMUTimer * <code class="descname">timer_new_ms</code><span class="sig-paren">(</span>QEMUClockType<em>&nbsp;type</em>, QEMUTimerCB *<em>&nbsp;cb</em>, void *<em>&nbsp;opaque</em><span class="sig-paren">)</span><a class="headerlink" href="#c.timer_new_ms" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUClockType</span> <span class="pre">type</span></code></dt>
+<dd>the clock type to associate with the timer</dd>
+<dt><code class="docutils literal"><span class="pre">QEMUTimerCB</span> <span class="pre">*</span> <span class="pre">cb</span></code></dt>
+<dd>the callback to call when the timer expires</dd>
+<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">opaque</span></code></dt>
+<dd>the opaque pointer to pass to the callback</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Create a new timer with millisecond scale on the default timer list
+associated with the clock.
+See timer_new_full for details.</p>
+<p><strong>Return</strong></p>
+<p>a pointer to the newly created timer</p>
+<dl class="function">
+<dt id="c.timer_deinit">
+void <code class="descname">timer_deinit</code><span class="sig-paren">(</span>QEMUTimer *<em>&nbsp;ts</em><span class="sig-paren">)</span><a class="headerlink" href="#c.timer_deinit" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUTimer</span> <span class="pre">*</span> <span class="pre">ts</span></code></dt>
+<dd>the timer to be de-initialised</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Deassociate the timer from any timerlist.  You should
+call timer_del before.  After this call, any further
+timer_del call cannot cause dangling pointer accesses
+even if the previously used timerlist is freed.</p>
+<dl class="function">
+<dt id="c.timer_free">
+void <code class="descname">timer_free</code><span class="sig-paren">(</span>QEMUTimer *<em>&nbsp;ts</em><span class="sig-paren">)</span><a class="headerlink" href="#c.timer_free" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUTimer</span> <span class="pre">*</span> <span class="pre">ts</span></code></dt>
+<dd>the timer</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Free a timer (it must not be on the active list)</p>
+<dl class="function">
+<dt id="c.timer_del">
+void <code class="descname">timer_del</code><span class="sig-paren">(</span>QEMUTimer *<em>&nbsp;ts</em><span class="sig-paren">)</span><a class="headerlink" href="#c.timer_del" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUTimer</span> <span class="pre">*</span> <span class="pre">ts</span></code></dt>
+<dd>the timer</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Delete a timer from the active list.</p>
+<p>This function is thread-safe but the timer and its timer list must not be
+freed while this function is running.</p>
+<dl class="function">
+<dt id="c.timer_mod_ns">
+void <code class="descname">timer_mod_ns</code><span class="sig-paren">(</span>QEMUTimer *<em>&nbsp;ts</em>, int64_t<em>&nbsp;expire_time</em><span class="sig-paren">)</span><a class="headerlink" href="#c.timer_mod_ns" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUTimer</span> <span class="pre">*</span> <span class="pre">ts</span></code></dt>
+<dd>the timer</dd>
+<dt><code class="docutils literal"><span class="pre">int64_t</span> <span class="pre">expire_time</span></code></dt>
+<dd>the expiry time in nanoseconds</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Modify a timer to expire at <strong>expire_time</strong></p>
+<p>This function is thread-safe but the timer and its timer list must not be
+freed while this function is running.</p>
+<dl class="function">
+<dt id="c.timer_mod_anticipate_ns">
+void <code class="descname">timer_mod_anticipate_ns</code><span class="sig-paren">(</span>QEMUTimer *<em>&nbsp;ts</em>, int64_t<em>&nbsp;expire_time</em><span class="sig-paren">)</span><a class="headerlink" href="#c.timer_mod_anticipate_ns" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUTimer</span> <span class="pre">*</span> <span class="pre">ts</span></code></dt>
+<dd>the timer</dd>
+<dt><code class="docutils literal"><span class="pre">int64_t</span> <span class="pre">expire_time</span></code></dt>
+<dd>the expiry time in nanoseconds</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Modify a timer to expire at <strong>expire_time</strong> or the current time,
+whichever comes earlier.</p>
+<p>This function is thread-safe but the timer and its timer list must not be
+freed while this function is running.</p>
+<dl class="function">
+<dt id="c.timer_mod">
+void <code class="descname">timer_mod</code><span class="sig-paren">(</span>QEMUTimer *<em>&nbsp;ts</em>, int64_t<em>&nbsp;expire_timer</em><span class="sig-paren">)</span><a class="headerlink" href="#c.timer_mod" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUTimer</span> <span class="pre">*</span> <span class="pre">ts</span></code></dt>
+<dd>the timer</dd>
+<dt><code class="docutils literal"><span class="pre">int64_t</span> <span class="pre">expire_timer</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Modify a timer to expiry at <strong>expire_time</strong>, taking into
+account the scale associated with the timer.</p>
+<p>This function is thread-safe but the timer and its timer list must not be
+freed while this function is running.</p>
+<dl class="function">
+<dt id="c.timer_mod_anticipate">
+void <code class="descname">timer_mod_anticipate</code><span class="sig-paren">(</span>QEMUTimer *<em>&nbsp;ts</em>, int64_t<em>&nbsp;expire_time</em><span class="sig-paren">)</span><a class="headerlink" href="#c.timer_mod_anticipate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUTimer</span> <span class="pre">*</span> <span class="pre">ts</span></code></dt>
+<dd>the timer</dd>
+<dt><code class="docutils literal"><span class="pre">int64_t</span> <span class="pre">expire_time</span></code></dt>
+<dd>the expiry time in nanoseconds</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Modify a timer to expire at <strong>expire_time</strong> or the current time, whichever
+comes earlier, taking into account the scale associated with the timer.</p>
+<p>This function is thread-safe but the timer and its timer list must not be
+freed while this function is running.</p>
+<dl class="function">
+<dt id="c.timer_pending">
+<a class="reference internal" href="../qom/object_interfaces.html#c.bool" title="bool">bool</a> <code class="descname">timer_pending</code><span class="sig-paren">(</span>QEMUTimer *<em>&nbsp;ts</em><span class="sig-paren">)</span><a class="headerlink" href="#c.timer_pending" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUTimer</span> <span class="pre">*</span> <span class="pre">ts</span></code></dt>
+<dd>the timer</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Determines whether a timer is pending (i.e. is on the
+active list of timers, whether or not it has not yet expired).</p>
+<p><strong>Return</strong></p>
+<p>true if the timer is pending</p>
+<dl class="function">
+<dt id="c.timer_expired">
+<a class="reference internal" href="../qom/object_interfaces.html#c.bool" title="bool">bool</a> <code class="descname">timer_expired</code><span class="sig-paren">(</span>QEMUTimer *<em>&nbsp;timer_head</em>, int64_t<em>&nbsp;current_time</em><span class="sig-paren">)</span><a class="headerlink" href="#c.timer_expired" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUTimer</span> <span class="pre">*</span> <span class="pre">timer_head</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal"><span class="pre">int64_t</span> <span class="pre">current_time</span></code></dt>
+<dd>the current time</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Determines whether a timer has expired.</p>
+<p><strong>Return</strong></p>
+<p>true if the timer has expired</p>
+<dl class="function">
+<dt id="c.timer_expire_time_ns">
+uint64_t <code class="descname">timer_expire_time_ns</code><span class="sig-paren">(</span>QEMUTimer *<em>&nbsp;ts</em><span class="sig-paren">)</span><a class="headerlink" href="#c.timer_expire_time_ns" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUTimer</span> <span class="pre">*</span> <span class="pre">ts</span></code></dt>
+<dd>the timer</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Determine the expiry time of a timer</p>
+<p><strong>Return</strong></p>
+<p>the expiry time in nanoseconds</p>
+<dl class="function">
+<dt id="c.timer_get">
+void <code class="descname">timer_get</code><span class="sig-paren">(</span>QEMUFile *<em>&nbsp;f</em>, QEMUTimer *<em>&nbsp;ts</em><span class="sig-paren">)</span><a class="headerlink" href="#c.timer_get" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUFile</span> <span class="pre">*</span> <span class="pre">f</span></code></dt>
+<dd>the file</dd>
+<dt><code class="docutils literal"><span class="pre">QEMUTimer</span> <span class="pre">*</span> <span class="pre">ts</span></code></dt>
+<dd>the timer</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Read a timer <strong>ts</strong> from a file <strong>f</strong></p>
+<dl class="function">
+<dt id="c.timer_put">
+void <code class="descname">timer_put</code><span class="sig-paren">(</span>QEMUFile *<em>&nbsp;f</em>, QEMUTimer *<em>&nbsp;ts</em><span class="sig-paren">)</span><a class="headerlink" href="#c.timer_put" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUFile</span> <span class="pre">*</span> <span class="pre">f</span></code></dt>
+<dd>the file</dd>
+<dt><code class="docutils literal"><span class="pre">QEMUTimer</span> <span class="pre">*</span> <span class="pre">ts</span></code></dt>
+<dd>the timer</dd>
+</dl>
+<dl class="function">
+<dt id="c.qemu_timeout_ns_to_ms">
+int <code class="descname">qemu_timeout_ns_to_ms</code><span class="sig-paren">(</span>int64_t<em>&nbsp;ns</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_timeout_ns_to_ms" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">int64_t</span> <span class="pre">ns</span></code></dt>
+<dd>nanosecond timeout value</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Convert a nanosecond timeout value (or -1) to
+a millisecond value (or -1), always rounding up.</p>
+<p><strong>Return</strong></p>
+<p>millisecond timeout value</p>
+<dl class="function">
+<dt id="c.qemu_poll_ns">
+int <code class="descname">qemu_poll_ns</code><span class="sig-paren">(</span>GPollFD *<em>&nbsp;fds</em>, guint<em>&nbsp;nfds</em>, int64_t<em>&nbsp;timeout</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_poll_ns" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">GPollFD</span> <span class="pre">*</span> <span class="pre">fds</span></code></dt>
+<dd>Array of file descriptors</dd>
+<dt><code class="docutils literal"><span class="pre">guint</span> <span class="pre">nfds</span></code></dt>
+<dd>number of file descriptors</dd>
+<dt><code class="docutils literal"><span class="pre">int64_t</span> <span class="pre">timeout</span></code></dt>
+<dd>timeout in nanoseconds</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Perform a poll like g_poll but with a timeout in nanoseconds.
+See g_poll documentation for further details.</p>
+<p><strong>Return</strong></p>
+<p>number of fds ready</p>
+<dl class="function">
+<dt id="c.qemu_soonest_timeout">
+int64_t <code class="descname">qemu_soonest_timeout</code><span class="sig-paren">(</span>int64_t<em>&nbsp;timeout1</em>, int64_t<em>&nbsp;timeout2</em><span class="sig-paren">)</span><a class="headerlink" href="#c.qemu_soonest_timeout" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">int64_t</span> <span class="pre">timeout1</span></code></dt>
+<dd>first timeout in nanoseconds (or -1 for infinite)</dd>
+<dt><code class="docutils literal"><span class="pre">int64_t</span> <span class="pre">timeout2</span></code></dt>
+<dd>second timeout in nanoseconds (or -1 for infinite)</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Calculates the soonest of two timeout values. -1 means infinite, which
+is later than any other value.</p>
+<p><strong>Return</strong></p>
+<p>soonest timeout value in nanoseconds (or -1 for infinite)</p>
+<dl class="function">
+<dt id="c.init_clocks">
+void <code class="descname">init_clocks</code><span class="sig-paren">(</span>QEMUTimerListNotifyCB *<em>&nbsp;notify_cb</em><span class="sig-paren">)</span><a class="headerlink" href="#c.init_clocks" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">QEMUTimerListNotifyCB</span> <span class="pre">*</span> <span class="pre">notify_cb</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Initialise the clock &amp; timer infrastructure</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">QEMU</a></h1>
+
+
+
+<p class="blurb">Developers Guide</p>
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=&repo=&type=watch&count=true&size=large"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../decodetree.html">Decodetree Specification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../kconfig.html">QEMU and Kconfig</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../loads-stores.html">Load and Store APIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../memory.html">The memory API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../migration.html">Migration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../qapi.html">QAPI headers</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../qemu.html">QEMU headers</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="bitops.html">Bitwise operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="coroutine.html">QEMU coroutine implementation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="atomic128.html">atomic128 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="atomic.html">atomic header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="base64.html">base64 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bcd.html">bcd header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bitmap.html">bitmap header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bswap.html">bswap header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="buffer.html">buffer header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="compiler.html">compiler header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="config-file.html">config-file header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="coroutine_int.html">coroutine_int header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cpuid.html">cpuid header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="crc32c.html">crc32c header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ctype.html">ctype header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cutils.html">cutils header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="drm.html">drm header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="envlist.html">envlist header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="error-report.html">error-report header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="event_notifier.html">event_notifier header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fifo32.html">fifo32 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fifo8.html">fifo8 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="filemonitor.html">filemonitor header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="futex.html">futex header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guest-random.html">guest-random header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="hbitmap.html">hbitmap header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="help_option.html">help_option header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="host-utils.html">host-utils header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="id.html">id header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="int128.html">int128 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="iova-tree.html">iova-tree header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="iov.html">iov header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jhash.html">jhash header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="job.html">job header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="lockable.html">lockable header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="log-for-trace.html">log-for-trace header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="log.html">log header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="main-loop.html">main-loop header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="memfd.html">memfd header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mmap-alloc.html">mmap-alloc header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="module.html">module header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notify.html">notify header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="option.html">option header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="option_int.html">option_int header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="osdep.html">osdep header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="path.html">path header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pmem.html">pmem header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="processor.html">processor header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qdist.html">qdist header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qemu-print.html">qemu-print header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qht.html">qht header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qsp.html">qsp header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="queue.html">queue header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="range.html">range header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ratelimit.html">ratelimit header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rcu.html">rcu header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rcu_queue.html">rcu_queue header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="readline.html">readline header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="seqlock.html">seqlock header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sockets.html">sockets header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stats64.html">stats64 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sys_membarrier.html">sys_membarrier header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="systemd.html">systemd header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="thread.html">thread header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="thread-posix.html">thread-posix header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="thread-win32.html">thread-win32 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="throttle.html">throttle header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="throttle-options.html">throttle-options header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="timed-average.html">timed-average header</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="">timer header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="typedefs.html">typedefs header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unicode.html">unicode header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="units.html">units header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="uri.html">uri header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="uuid.html">uuid header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="vfio-helpers.html">vfio-helpers header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="win_dump_defs.html">win_dump_defs header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="xattr.html">xattr header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="xxhash.html">xxhash header</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../qom.html">QOM headers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../stable-process.html">QEMU and the stable process</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../secure-coding-practices.html">Secure Coding Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tcg.html">Translator Internals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testing.html">Testing in QEMU</a></li>
+</ul>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, The QEMU Project Developers.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

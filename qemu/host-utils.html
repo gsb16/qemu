@@ -1,0 +1,473 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>host-utils header &mdash; QEMU 4.1.50 (v4.0.0-470-g250533e6-dirty) documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '4.1.50 (v4.0.0-470-g250533e6-dirty)',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  false
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="QEMU 4.1.50 (v4.0.0-470-g250533e6-dirty) documentation" href="../index.html" />
+    <link rel="up" title="QEMU headers" href="../qemu.html" />
+    <link rel="next" title="id header" href="id.html" />
+    <link rel="prev" title="help_option header" href="help_option.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="host-utils-header">
+<h1>host-utils header<a class="headerlink" href="#host-utils-header" title="Permalink to this headline">¶</a></h1>
+<p>The documentation of QEMU&#8217;s <code class="docutils literal"><span class="pre">qemu/host-utils.h</span></code> header.</p>
+<dl class="function">
+<dt id="c.clz32">
+int <code class="descname">clz32</code><span class="sig-paren">(</span>uint32_t<em>&nbsp;val</em><span class="sig-paren">)</span><a class="headerlink" href="#c.clz32" title="Permalink to this definition">¶</a></dt>
+<dd><p>count leading zeros in a 32-bit value.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">uint32_t</span> <span class="pre">val</span></code></dt>
+<dd>The value to search</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Returns 32 if the value is zero.  Note that the GCC builtin is
+undefined if the value is zero.</p>
+<dl class="function">
+<dt id="c.clo32">
+int <code class="descname">clo32</code><span class="sig-paren">(</span>uint32_t<em>&nbsp;val</em><span class="sig-paren">)</span><a class="headerlink" href="#c.clo32" title="Permalink to this definition">¶</a></dt>
+<dd><p>count leading ones in a 32-bit value.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">uint32_t</span> <span class="pre">val</span></code></dt>
+<dd>The value to search</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Returns 32 if the value is -1.</p>
+<dl class="function">
+<dt id="c.clz64">
+int <code class="descname">clz64</code><span class="sig-paren">(</span>uint64_t<em>&nbsp;val</em><span class="sig-paren">)</span><a class="headerlink" href="#c.clz64" title="Permalink to this definition">¶</a></dt>
+<dd><p>count leading zeros in a 64-bit value.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">val</span></code></dt>
+<dd>The value to search</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Returns 64 if the value is zero.  Note that the GCC builtin is
+undefined if the value is zero.</p>
+<dl class="function">
+<dt id="c.clo64">
+int <code class="descname">clo64</code><span class="sig-paren">(</span>uint64_t<em>&nbsp;val</em><span class="sig-paren">)</span><a class="headerlink" href="#c.clo64" title="Permalink to this definition">¶</a></dt>
+<dd><p>count leading ones in a 64-bit value.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">val</span></code></dt>
+<dd>The value to search</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Returns 64 if the value is -1.</p>
+<dl class="function">
+<dt id="c.ctz32">
+int <code class="descname">ctz32</code><span class="sig-paren">(</span>uint32_t<em>&nbsp;val</em><span class="sig-paren">)</span><a class="headerlink" href="#c.ctz32" title="Permalink to this definition">¶</a></dt>
+<dd><p>count trailing zeros in a 32-bit value.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">uint32_t</span> <span class="pre">val</span></code></dt>
+<dd>The value to search</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Returns 32 if the value is zero.  Note that the GCC builtin is
+undefined if the value is zero.</p>
+<dl class="function">
+<dt id="c.cto32">
+int <code class="descname">cto32</code><span class="sig-paren">(</span>uint32_t<em>&nbsp;val</em><span class="sig-paren">)</span><a class="headerlink" href="#c.cto32" title="Permalink to this definition">¶</a></dt>
+<dd><p>count trailing ones in a 32-bit value.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">uint32_t</span> <span class="pre">val</span></code></dt>
+<dd>The value to search</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Returns 32 if the value is -1.</p>
+<dl class="function">
+<dt id="c.ctz64">
+int <code class="descname">ctz64</code><span class="sig-paren">(</span>uint64_t<em>&nbsp;val</em><span class="sig-paren">)</span><a class="headerlink" href="#c.ctz64" title="Permalink to this definition">¶</a></dt>
+<dd><p>count trailing zeros in a 64-bit value.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">val</span></code></dt>
+<dd>The value to search</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Returns 64 if the value is zero.  Note that the GCC builtin is
+undefined if the value is zero.</p>
+<dl class="function">
+<dt id="c.cto64">
+int <code class="descname">cto64</code><span class="sig-paren">(</span>uint64_t<em>&nbsp;val</em><span class="sig-paren">)</span><a class="headerlink" href="#c.cto64" title="Permalink to this definition">¶</a></dt>
+<dd><p>count trailing ones in a 64-bit value.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">val</span></code></dt>
+<dd>The value to search</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Returns 64 if the value is -1.</p>
+<dl class="function">
+<dt id="c.clrsb32">
+int <code class="descname">clrsb32</code><span class="sig-paren">(</span>uint32_t<em>&nbsp;val</em><span class="sig-paren">)</span><a class="headerlink" href="#c.clrsb32" title="Permalink to this definition">¶</a></dt>
+<dd><p>count leading redundant sign bits in a 32-bit value.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">uint32_t</span> <span class="pre">val</span></code></dt>
+<dd>The value to search</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Returns the number of bits following the sign bit that are equal to it.
+No special cases; output range is [0-31].</p>
+<dl class="function">
+<dt id="c.clrsb64">
+int <code class="descname">clrsb64</code><span class="sig-paren">(</span>uint64_t<em>&nbsp;val</em><span class="sig-paren">)</span><a class="headerlink" href="#c.clrsb64" title="Permalink to this definition">¶</a></dt>
+<dd><p>count leading redundant sign bits in a 64-bit value.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">val</span></code></dt>
+<dd>The value to search</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Returns the number of bits following the sign bit that are equal to it.
+No special cases; output range is [0-63].</p>
+<dl class="function">
+<dt id="c.ctpop8">
+int <code class="descname">ctpop8</code><span class="sig-paren">(</span>uint8_t<em>&nbsp;val</em><span class="sig-paren">)</span><a class="headerlink" href="#c.ctpop8" title="Permalink to this definition">¶</a></dt>
+<dd><p>count the population of one bits in an 8-bit value.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">uint8_t</span> <span class="pre">val</span></code></dt>
+<dd>The value to search</dd>
+</dl>
+<dl class="function">
+<dt id="c.ctpop16">
+int <code class="descname">ctpop16</code><span class="sig-paren">(</span>uint16_t<em>&nbsp;val</em><span class="sig-paren">)</span><a class="headerlink" href="#c.ctpop16" title="Permalink to this definition">¶</a></dt>
+<dd><p>count the population of one bits in a 16-bit value.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">uint16_t</span> <span class="pre">val</span></code></dt>
+<dd>The value to search</dd>
+</dl>
+<dl class="function">
+<dt id="c.ctpop32">
+int <code class="descname">ctpop32</code><span class="sig-paren">(</span>uint32_t<em>&nbsp;val</em><span class="sig-paren">)</span><a class="headerlink" href="#c.ctpop32" title="Permalink to this definition">¶</a></dt>
+<dd><p>count the population of one bits in a 32-bit value.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">uint32_t</span> <span class="pre">val</span></code></dt>
+<dd>The value to search</dd>
+</dl>
+<dl class="function">
+<dt id="c.ctpop64">
+int <code class="descname">ctpop64</code><span class="sig-paren">(</span>uint64_t<em>&nbsp;val</em><span class="sig-paren">)</span><a class="headerlink" href="#c.ctpop64" title="Permalink to this definition">¶</a></dt>
+<dd><p>count the population of one bits in a 64-bit value.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">val</span></code></dt>
+<dd>The value to search</dd>
+</dl>
+<dl class="function">
+<dt id="c.revbit8">
+uint8_t <code class="descname">revbit8</code><span class="sig-paren">(</span>uint8_t<em>&nbsp;x</em><span class="sig-paren">)</span><a class="headerlink" href="#c.revbit8" title="Permalink to this definition">¶</a></dt>
+<dd><p>reverse the bits in an 8-bit value.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">uint8_t</span> <span class="pre">x</span></code></dt>
+<dd>The value to modify.</dd>
+</dl>
+<dl class="function">
+<dt id="c.revbit16">
+uint16_t <code class="descname">revbit16</code><span class="sig-paren">(</span>uint16_t<em>&nbsp;x</em><span class="sig-paren">)</span><a class="headerlink" href="#c.revbit16" title="Permalink to this definition">¶</a></dt>
+<dd><p>reverse the bits in a 16-bit value.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">uint16_t</span> <span class="pre">x</span></code></dt>
+<dd>The value to modify.</dd>
+</dl>
+<dl class="function">
+<dt id="c.revbit32">
+uint32_t <code class="descname">revbit32</code><span class="sig-paren">(</span>uint32_t<em>&nbsp;x</em><span class="sig-paren">)</span><a class="headerlink" href="#c.revbit32" title="Permalink to this definition">¶</a></dt>
+<dd><p>reverse the bits in a 32-bit value.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">uint32_t</span> <span class="pre">x</span></code></dt>
+<dd>The value to modify.</dd>
+</dl>
+<dl class="function">
+<dt id="c.revbit64">
+uint64_t <code class="descname">revbit64</code><span class="sig-paren">(</span>uint64_t<em>&nbsp;x</em><span class="sig-paren">)</span><a class="headerlink" href="#c.revbit64" title="Permalink to this definition">¶</a></dt>
+<dd><p>reverse the bits in a 64-bit value.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">x</span></code></dt>
+<dd>The value to modify.</dd>
+</dl>
+<dl class="function">
+<dt id="c.pow2floor">
+uint64_t <code class="descname">pow2floor</code><span class="sig-paren">(</span>uint64_t<em>&nbsp;value</em><span class="sig-paren">)</span><a class="headerlink" href="#c.pow2floor" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">value</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<dl class="function">
+<dt id="c.urshift">
+void <code class="descname">urshift</code><span class="sig-paren">(</span>uint64_t *<em>&nbsp;plow</em>, uint64_t *<em>&nbsp;phigh</em>, int32_t<em>&nbsp;shift</em><span class="sig-paren">)</span><a class="headerlink" href="#c.urshift" title="Permalink to this definition">¶</a></dt>
+<dd><p>128-bit Unsigned Right Shift.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">*</span> <span class="pre">plow</span></code></dt>
+<dd>in/out - lower 64-bit integer.</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">*</span> <span class="pre">phigh</span></code></dt>
+<dd>in/out - higher 64-bit integer.</dd>
+<dt><code class="docutils literal"><span class="pre">int32_t</span> <span class="pre">shift</span></code></dt>
+<dd>in - bytes to shift, between 0 and 127.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Result is zero-extended and stored in plow/phigh, which are
+input/output variables. Shift values outside the range will
+be mod to 128. In other words, the caller is responsible to
+verify/assert both the shift range and plow/phigh pointers.</p>
+<dl class="function">
+<dt id="c.ulshift">
+void <code class="descname">ulshift</code><span class="sig-paren">(</span>uint64_t *<em>&nbsp;plow</em>, uint64_t *<em>&nbsp;phigh</em>, int32_t<em>&nbsp;shift</em>, <a class="reference internal" href="../qom/object_interfaces.html#c.bool" title="bool">bool</a> *<em>&nbsp;overflow</em><span class="sig-paren">)</span><a class="headerlink" href="#c.ulshift" title="Permalink to this definition">¶</a></dt>
+<dd><p>128-bit Unsigned Left Shift.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">*</span> <span class="pre">plow</span></code></dt>
+<dd>in/out - lower 64-bit integer.</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">*</span> <span class="pre">phigh</span></code></dt>
+<dd>in/out - higher 64-bit integer.</dd>
+<dt><code class="docutils literal"><span class="pre">int32_t</span> <span class="pre">shift</span></code></dt>
+<dd>in - bytes to shift, between 0 and 127.</dd>
+<dt><code class="docutils literal"><span class="pre">bool</span> <span class="pre">*</span> <span class="pre">overflow</span></code></dt>
+<dd>out - true if any 1-bit is shifted out.</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>Result is zero-extended and stored in plow/phigh, which are
+input/output variables. Shift values outside the range will
+be mod to 128. In other words, the caller is responsible to
+verify/assert both the shift range and plow/phigh pointers.</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">QEMU</a></h1>
+
+
+
+<p class="blurb">Developers Guide</p>
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=&repo=&type=watch&count=true&size=large"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../decodetree.html">Decodetree Specification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../kconfig.html">QEMU and Kconfig</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../loads-stores.html">Load and Store APIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../memory.html">The memory API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../migration.html">Migration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../qapi.html">QAPI headers</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../qemu.html">QEMU headers</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="bitops.html">Bitwise operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="coroutine.html">QEMU coroutine implementation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="atomic128.html">atomic128 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="atomic.html">atomic header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="base64.html">base64 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bcd.html">bcd header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bitmap.html">bitmap header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bswap.html">bswap header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="buffer.html">buffer header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="compiler.html">compiler header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="config-file.html">config-file header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="coroutine_int.html">coroutine_int header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cpuid.html">cpuid header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="crc32c.html">crc32c header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ctype.html">ctype header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cutils.html">cutils header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="drm.html">drm header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="envlist.html">envlist header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="error-report.html">error-report header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="event_notifier.html">event_notifier header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fifo32.html">fifo32 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fifo8.html">fifo8 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="filemonitor.html">filemonitor header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="futex.html">futex header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guest-random.html">guest-random header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="hbitmap.html">hbitmap header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="help_option.html">help_option header</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="">host-utils header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="id.html">id header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="int128.html">int128 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="iova-tree.html">iova-tree header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="iov.html">iov header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jhash.html">jhash header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="job.html">job header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="lockable.html">lockable header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="log-for-trace.html">log-for-trace header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="log.html">log header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="main-loop.html">main-loop header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="memfd.html">memfd header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mmap-alloc.html">mmap-alloc header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="module.html">module header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notify.html">notify header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="option.html">option header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="option_int.html">option_int header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="osdep.html">osdep header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="path.html">path header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pmem.html">pmem header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="processor.html">processor header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qdist.html">qdist header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qemu-print.html">qemu-print header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qht.html">qht header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qsp.html">qsp header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="queue.html">queue header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="range.html">range header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ratelimit.html">ratelimit header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rcu.html">rcu header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rcu_queue.html">rcu_queue header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="readline.html">readline header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="seqlock.html">seqlock header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sockets.html">sockets header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stats64.html">stats64 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sys_membarrier.html">sys_membarrier header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="systemd.html">systemd header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="thread.html">thread header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="thread-posix.html">thread-posix header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="thread-win32.html">thread-win32 header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="throttle.html">throttle header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="throttle-options.html">throttle-options header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="timed-average.html">timed-average header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="timer.html">timer header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="typedefs.html">typedefs header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unicode.html">unicode header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="units.html">units header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="uri.html">uri header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="uuid.html">uuid header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="vfio-helpers.html">vfio-helpers header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="win_dump_defs.html">win_dump_defs header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="xattr.html">xattr header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="xxhash.html">xxhash header</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../qom.html">QOM headers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../stable-process.html">QEMU and the stable process</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../secure-coding-practices.html">Secure Coding Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tcg.html">Translator Internals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testing.html">Testing in QEMU</a></li>
+</ul>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, The QEMU Project Developers.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
