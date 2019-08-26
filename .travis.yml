@@ -35,6 +35,7 @@ addons:
       - libusb-1.0-0-dev
       - libvte-2.91-dev
       - sparse
+      - python3-sphinx
       - uuid-dev
       - gcovr
   homebrew:
@@ -42,6 +43,7 @@ addons:
       - glib
       - pixman
       - gnu-sed
+      - sphinx-doc
     update: true
 
 
